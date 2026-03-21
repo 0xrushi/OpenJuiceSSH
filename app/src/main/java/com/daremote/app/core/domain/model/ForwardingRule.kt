@@ -9,6 +9,7 @@ data class ForwardingRule(
     val localPort: Int,
     val remoteHost: String? = null,
     val remotePort: Int? = null,
+    val proxyId: Long? = null,
     val autoConnect: Boolean = false,
     val isActive: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()

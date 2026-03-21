@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.daremote.app.core.domain.model.ForwardingType
+import com.daremote.app.feature.connections.ProxyDropdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,6 +128,18 @@ fun AddEditForwardingScreen(
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Proxy (optional)
+            if (state.availableProxies.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                ProxyDropdown(
+                    selectedProxyId = state.proxyId,
+                    proxies = state.availableProxies,
+                    onProxySelected = viewModel::updateProxyId,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // Bind address + local port
             OutlinedTextField(

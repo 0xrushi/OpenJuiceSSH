@@ -29,7 +29,7 @@ import com.daremote.app.core.model.SshKeyEntity
         AlertRuleEntity::class,
         ProxyEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

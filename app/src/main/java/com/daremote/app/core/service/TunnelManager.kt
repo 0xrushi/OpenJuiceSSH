@@ -5,6 +5,7 @@ import com.daremote.app.core.domain.model.ForwardingRule
 import com.daremote.app.core.domain.model.ForwardingType
 import com.daremote.app.core.domain.model.TunnelState
 import com.daremote.app.core.domain.repository.ForwardingRepository
+import com.daremote.app.core.domain.repository.ProxyRepository
 import com.daremote.app.core.domain.repository.ServerRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +28,8 @@ import javax.inject.Singleton
 class TunnelManager @Inject constructor(
     private val sessionManager: SshSessionManager,
     private val forwardingRepository: ForwardingRepository,
-    private val serverRepository: ServerRepository
+    private val serverRepository: ServerRepository,
+    private val proxyRepository: ProxyRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val tunnelJobs = mutableMapOf<Long, Job>()
@@ -48,7 +50,8 @@ class TunnelManager @Inject constructor(
                         ?: throw IllegalStateException("Server not found")
 
                     if (!sessionManager.isConnected(rule.serverId)) {
-                        sessionManager.connect(server)
+                        val proxy = rule.proxyId?.let { proxyRepository.getProxyById(it) }
+                        sessionManager.connect(server, proxy)
                     }
 
                     val client = sessionManager.getSession(rule.serverId)

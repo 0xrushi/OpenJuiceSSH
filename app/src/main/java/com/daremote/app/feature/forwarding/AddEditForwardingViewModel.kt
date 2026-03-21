@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daremote.app.core.domain.model.ForwardingRule
 import com.daremote.app.core.domain.model.ForwardingType
+import com.daremote.app.core.domain.model.Proxy
 import com.daremote.app.core.domain.model.Server
 import com.daremote.app.core.domain.repository.ForwardingRepository
+import com.daremote.app.core.domain.repository.ProxyRepository
 import com.daremote.app.core.domain.repository.ServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,8 +26,10 @@ data class AddEditForwardingState(
     val remoteHost: String = "",
     val remotePort: String = "",
     val selectedServerId: Long? = null,
+    val proxyId: Long? = null,
     val autoConnect: Boolean = false,
     val servers: List<Server> = emptyList(),
+    val availableProxies: List<Proxy> = emptyList(),
     val isEditing: Boolean = false,
     val isSaving: Boolean = false,
     val saved: Boolean = false,
@@ -36,6 +40,7 @@ data class AddEditForwardingState(
 class AddEditForwardingViewModel @Inject constructor(
     private val forwardingRepository: ForwardingRepository,
     private val serverRepository: ServerRepository,
+    private val proxyRepository: ProxyRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -46,7 +51,8 @@ class AddEditForwardingViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val servers = serverRepository.getAllServers().first()
-            _state.update { it.copy(servers = servers) }
+            val proxies = proxyRepository.getAllProxies().first()
+            _state.update { it.copy(servers = servers, availableProxies = proxies) }
 
             ruleId?.let { id ->
                 forwardingRepository.getRuleById(id)?.let { rule ->
@@ -59,6 +65,7 @@ class AddEditForwardingViewModel @Inject constructor(
                             remoteHost = rule.remoteHost ?: "",
                             remotePort = rule.remotePort?.toString() ?: "",
                             selectedServerId = rule.serverId,
+                            proxyId = rule.proxyId,
                             autoConnect = rule.autoConnect,
                             isEditing = true
                         )
@@ -75,6 +82,7 @@ class AddEditForwardingViewModel @Inject constructor(
     fun updateRemoteHost(v: String) = _state.update { it.copy(remoteHost = v) }
     fun updateRemotePort(v: String) = _state.update { it.copy(remotePort = v) }
     fun updateServer(id: Long) = _state.update { it.copy(selectedServerId = id) }
+    fun updateProxyId(id: Long?) = _state.update { it.copy(proxyId = id) }
     fun updateAutoConnect(v: Boolean) = _state.update { it.copy(autoConnect = v) }
 
     fun save() {
@@ -96,6 +104,7 @@ class AddEditForwardingViewModel @Inject constructor(
                     localPort = s.localPort.toInt(),
                     remoteHost = s.remoteHost.ifBlank { null },
                     remotePort = s.remotePort.toIntOrNull(),
+                    proxyId = s.proxyId,
                     autoConnect = s.autoConnect
                 )
                 if (ruleId != null) {
