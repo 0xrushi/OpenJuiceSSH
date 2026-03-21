@@ -10,11 +10,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daremote.app.core.data.ssh.SftpClient
 import com.daremote.app.core.data.ssh.SshSessionManager
+import com.daremote.app.core.data.ssh.TerminalSessionManager
 import com.daremote.app.core.domain.model.Snippet
 import com.daremote.app.core.domain.repository.ServerRepository
 import com.daremote.app.core.domain.repository.SnippetRepository
 import com.termux.terminal.TerminalSession
-import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,14 +22,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.schmizz.sshj.connection.channel.direct.Session
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
-import java.io.OutputStream
 import java.lang.ref.WeakReference
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -91,19 +89,18 @@ data class TerminalState(
 @HiltViewModel
 class TerminalViewModel @Inject constructor(
     private val sessionManager: SshSessionManager,
+    private val terminalSessionManager: TerminalSessionManager,
     private val serverRepository: ServerRepository,
     private val snippetRepository: SnippetRepository,
     private val sftpClient: SftpClient,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context
-) : ViewModel(), TerminalSessionClient, TerminalViewClient {
+) : ViewModel(), TerminalSessionManager.TerminalSessionListener, TerminalViewClient {
 
     private val serverId: Long = savedStateHandle["serverId"] ?: 0L
     private val _state = MutableStateFlow(TerminalState())
     val state: StateFlow<TerminalState> = _state
 
-    private var sessionCounter = 0
-    private val shellMap = mutableMapOf<Int, Pair<Session.Shell, OutputStream>>()
     private var terminalViewRef: WeakReference<TerminalView>? = null
 
     private val leftPathStack = mutableListOf<String>()
@@ -115,7 +112,25 @@ class TerminalViewModel @Inject constructor(
     }
 
     init {
-        // SSH connection + first session
+        terminalSessionManager.addListener(this)
+
+        // Sync with TerminalSessionManager sessions
+        viewModelScope.launch {
+            terminalSessionManager.sessions.collectLatest { allSessions ->
+                val serverSessions = allSessions[serverId] ?: emptyList()
+                _state.update { s ->
+                    s.copy(
+                        sessions = serverSessions.map { 
+                            TerminalSessionData(it.sessionId, it.name, true, it.terminalSession)
+                        },
+                        currentSessionId = if (s.currentSessionId == 0 && serverSessions.isNotEmpty()) 
+                            serverSessions.first().sessionId else s.currentSessionId
+                    )
+                }
+            }
+        }
+
+        // SSH connection + first session if none exists
         viewModelScope.launch {
             try {
                 val server = serverRepository.getServerById(serverId)
@@ -126,7 +141,10 @@ class TerminalViewModel @Inject constructor(
                 _state.update { it.copy(serverName = server.name) }
                 if (!sessionManager.isConnected(serverId)) sessionManager.connect(server)
                 _state.update { it.copy(isConnected = true) }
-                openNewSession()
+                
+                if (terminalSessionManager.sessions.value[serverId].isNullOrEmpty()) {
+                    openNewSession()
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Connection failed: ${e.message}") }
             }
@@ -152,47 +170,25 @@ class TerminalViewModel @Inject constructor(
         }
     }
 
+    override fun onSessionUpdated(serverId: Long, sessionId: Int) {
+        if (serverId == this.serverId) {
+            terminalViewRef?.get()?.let { v -> 
+                if (_state.value.currentSessionId == sessionId) {
+                    v.post { v.onScreenUpdated() } 
+                }
+            }
+        }
+    }
+
     // ── Terminal session management ───────────────────────────────────────────
 
     fun setTerminalView(view: TerminalView) { terminalViewRef = WeakReference(view) }
 
-    private fun findShellPath(): String {
-        val candidates = listOf(
-            "/system/bin/sh", "/system/bin/toybox", "/system/bin/toolbox",
-            "/vendor/bin/sh", "/system/xbin/sh"
-        )
-        return candidates.firstOrNull { File(it).canExecute() } ?: "/system/bin/sh"
-    }
-
     fun openNewSession() {
         viewModelScope.launch {
             try {
-                val client = sessionManager.getSession(serverId) ?: run {
-                    _state.update { it.copy(error = "SSH client session not available") }
-                    return@launch
-                }
-                val (_, shell) = withContext(Dispatchers.IO) {
-                    val session = client.startSession()
-                    session.allocatePTY("xterm-256color", 80, 24, 0, 0, emptyMap())
-                    session to session.startShell()
-                }
-                val termSession = withContext(Dispatchers.Main) {
-                    val shellPath = findShellPath()
-                    TerminalSession(
-                        shellPath, context.filesDir.absolutePath, arrayOf(shellPath),
-                        arrayOf("TERM=xterm-256color", "HOME=${context.filesDir.absolutePath}"),
-                        10000, this@TerminalViewModel
-                    ).also { try { it.initializeEmulator(80, 24) } catch (_: Exception) {} }
-                }
-                val sessionId = sessionCounter++
-                shellMap[sessionId] = shell to shell.outputStream
-                _state.update { s ->
-                    s.copy(
-                        sessions = s.sessions + TerminalSessionData(sessionId, "Session ${sessionId + 1}", true, termSession),
-                        currentSessionId = sessionId
-                    )
-                }
-                readShellOutput(sessionId, shell.inputStream, termSession)
+                val sessionId = terminalSessionManager.openSession(serverId)
+                _state.update { it.copy(currentSessionId = sessionId) }
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Failed to start shell: ${e.message}") }
             }
@@ -200,20 +196,6 @@ class TerminalViewModel @Inject constructor(
     }
 
     fun switchSession(sessionId: Int) = _state.update { it.copy(currentSessionId = sessionId) }
-
-    private fun readShellOutput(sessionId: Int, inputStream: InputStream, termSession: TerminalSession) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val buf = ByteArray(16384)
-                while (true) {
-                    val n = inputStream.read(buf); if (n == -1) break
-                    val emulator = termSession.emulator ?: continue
-                    emulator.append(buf, n)
-                    terminalViewRef?.get()?.let { v -> v.post { v.onScreenUpdated() } }
-                }
-            } catch (_: Exception) {}
-        }
-    }
 
     // ── Panel switching ───────────────────────────────────────────────────────
 
@@ -534,25 +516,6 @@ class TerminalViewModel @Inject constructor(
         if (isLeft) dp.copy(leftPane = f(dp.leftPane)) else dp.copy(rightPane = f(dp.rightPane))
     }
 
-    // ── TerminalSessionClient ─────────────────────────────────────────────────
-
-    override fun onTextChanged(session: TerminalSession) { terminalViewRef?.get()?.onScreenUpdated() }
-    override fun onSessionFinished(session: TerminalSession) {}
-    override fun onCopyTextToClipboard(session: TerminalSession, text: String) {}
-    override fun onPasteTextFromClipboard(session: TerminalSession) {}
-    override fun onBell(session: TerminalSession) {}
-    override fun onColorsChanged(session: TerminalSession) {}
-    override fun onTitleChanged(session: TerminalSession) {}
-    override fun onTerminalCursorStateChange(state: Boolean) {}
-    override fun getTerminalCursorStyle(): Int? = null
-    override fun logError(tag: String, message: String) {}
-    override fun logWarn(tag: String, message: String) {}
-    override fun logInfo(tag: String, message: String) {}
-    override fun logDebug(tag: String, message: String) {}
-    override fun logVerbose(tag: String, message: String) {}
-    override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {}
-    override fun logStackTrace(tag: String, e: Exception) {}
-
     // ── TerminalViewClient ────────────────────────────────────────────────────
 
     override fun onScale(scale: Float): Float = scale
@@ -564,9 +527,6 @@ class TerminalViewModel @Inject constructor(
                 ?.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
         }
     }
-
-    private fun getSessionId(session: TerminalSession) =
-        _state.value.sessions.find { it.terminalSession == session }?.id ?: _state.value.currentSessionId
 
     override fun shouldBackButtonBeMappedToEscape(): Boolean = false
     override fun shouldEnforceCharBasedInput(): Boolean = false
@@ -580,9 +540,15 @@ class TerminalViewModel @Inject constructor(
     override fun readShiftKey(): Boolean = false
     override fun readFnKey(): Boolean = false
     override fun onEmulatorSet() {}
+    override fun logError(tag: String, message: String) {}
+    override fun logWarn(tag: String, message: String) {}
+    override fun logInfo(tag: String, message: String) {}
+    override fun logDebug(tag: String, message: String) {}
+    override fun logVerbose(tag: String, message: String) {}
+    override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {}
+    override fun logStackTrace(tag: String, e: Exception) {}
 
     override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean {
-        val sessionId = getSessionId(session)
         val bytes: ByteArray? = when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> "\r".toByteArray()
             KeyEvent.KEYCODE_DEL -> byteArrayOf(0x7f)
@@ -600,30 +566,24 @@ class TerminalViewModel @Inject constructor(
             KeyEvent.KEYCODE_INSERT -> "\u001b[2~".toByteArray()
             else -> null
         }
-        if (bytes != null) { sendInput(sessionId, bytes); return true }
+        if (bytes != null) { sendInput(_state.value.currentSessionId, bytes); return true }
         return false
     }
 
     override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession): Boolean {
-        val sessionId = getSessionId(session)
         if (ctrlDown && (codePoint in 'a'.code..'z'.code || codePoint in 'A'.code..'Z'.code)) {
-            sendInput(sessionId, byteArrayOf((Character.toLowerCase(codePoint.toChar()) - 'a' + 1).toByte()))
+            sendInput(_state.value.currentSessionId, byteArrayOf((Character.toLowerCase(codePoint.toChar()) - 'a' + 1).toByte()))
             return true
         }
-        sendInput(sessionId, StringBuilder().appendCodePoint(codePoint).toString().toByteArray())
+        sendInput(_state.value.currentSessionId, StringBuilder().appendCodePoint(codePoint).toString().toByteArray())
         return true
     }
 
     fun sendInput(sessionId: Int, data: ByteArray) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try { shellMap[sessionId]?.second?.let { it.write(data); it.flush() } }
-            catch (_: Exception) {}
-        }
+        terminalSessionManager.sendInput(serverId, sessionId, data)
     }
 
     override fun onCleared() {
-        shellMap.values.forEach { (shell, _) -> try { shell.close() } catch (_: Exception) {} }
-        shellMap.clear()
-        _state.value.sessions.forEach { it.terminalSession?.finishIfRunning() }
+        terminalSessionManager.removeListener(this)
     }
 }

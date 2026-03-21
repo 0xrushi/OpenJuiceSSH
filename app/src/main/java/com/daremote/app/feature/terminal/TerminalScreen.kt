@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.daremote.app.core.domain.model.Snippet
 import com.daremote.app.core.ui.theme.*
 import com.daremote.app.feature.settings.SettingsViewModel
+import com.termux.terminal.TextStyle as TermuxTextStyle
 import com.termux.view.TerminalView
 
 private val PanelIndicator = Color(0xFF26C6DA)
@@ -39,6 +40,7 @@ fun TerminalScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
+    val terminalTheme = terminalThemes.find { it.name == settingsState.terminalTheme } ?: terminalThemes.first()
     var showFnKeys by remember { mutableStateOf(false) }
 
     val currentSession = state.sessions.find { it.id == state.currentSessionId }
@@ -71,14 +73,14 @@ fun TerminalScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TerminalBackground
+                    containerColor = terminalTheme.toolbar
                 )
             )
         },
         bottomBar = {
             if (state.activePanel == TerminalPanel.TERMINAL) {
                 Surface(
-                    color = TerminalToolbarBackground,
+                    color = terminalTheme.toolbar,
                     tonalElevation = 8.dp
                 ) {
                     Column(
@@ -134,7 +136,7 @@ fun TerminalScreen(
                 }
             }
         },
-        containerColor = TerminalBackground
+        containerColor = terminalTheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -142,7 +144,7 @@ fun TerminalScreen(
                 .padding(padding)
         ) {
             when (state.activePanel) {
-                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize)
+                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize, terminalTheme)
                 TerminalPanel.SFTP -> DualPaneSftpScreen(state, viewModel)
                 TerminalPanel.SNIPPETS -> SnippetsPanel(state, viewModel)
             }
@@ -155,20 +157,21 @@ private fun ColumnScope.TerminalPanelContent(
     state: TerminalState,
     terminalSession: com.termux.terminal.TerminalSession?,
     viewModel: TerminalViewModel,
-    fontSize: Int
+    fontSize: Int,
+    theme: TerminalColorTheme
 ) {
     // Session tabs + new session button
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(TerminalToolbarBackground),
+            .background(theme.toolbar),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (state.sessions.isNotEmpty()) {
             ScrollableTabRow(
                 selectedTabIndex = state.sessions.indexOfFirst { it.id == state.currentSessionId }
                     .coerceAtLeast(0),
-                containerColor = TerminalToolbarBackground,
+                containerColor = theme.toolbar,
                 contentColor = Color.White,
                 edgePadding = 0.dp,
                 modifier = Modifier.weight(1f)
@@ -193,7 +196,7 @@ private fun ColumnScope.TerminalPanelContent(
     Box(
         modifier = Modifier
             .weight(1f)
-            .background(TerminalBackground)
+            .background(theme.background)
     ) {
         if (terminalSession != null) {
             AndroidView(
@@ -206,6 +209,7 @@ private fun ColumnScope.TerminalPanelContent(
                         isFocusable = true
                         isFocusableInTouchMode = true
                         requestFocus()
+                        applyTerminalTheme(this, theme)
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
@@ -216,6 +220,7 @@ private fun ColumnScope.TerminalPanelContent(
                     if (view.mTermSession != terminalSession) {
                         view.attachSession(terminalSession)
                     }
+                    applyTerminalTheme(view, theme)
                 }
             )
         } else {
@@ -242,6 +247,28 @@ private fun ColumnScope.TerminalPanelContent(
     }
 }
 
+private fun applyTerminalTheme(view: TerminalView, theme: TerminalColorTheme) {
+    val emulator = view.mEmulator ?: return
+    emulator.mColors.mCurrentColors[TermuxTextStyle.COLOR_INDEX_BACKGROUND] = android.graphics.Color.argb(
+        255,
+        (theme.background.red * 255).toInt(),
+        (theme.background.green * 255).toInt(),
+        (theme.background.blue * 255).toInt()
+    )
+    emulator.mColors.mCurrentColors[TermuxTextStyle.COLOR_INDEX_FOREGROUND] = android.graphics.Color.argb(
+        255,
+        (theme.foreground.red * 255).toInt(),
+        (theme.foreground.green * 255).toInt(),
+        (theme.foreground.blue * 255).toInt()
+    )
+    emulator.mColors.mCurrentColors[TermuxTextStyle.COLOR_INDEX_CURSOR] = android.graphics.Color.argb(
+        255,
+        (theme.cursor.red * 255).toInt(),
+        (theme.cursor.green * 255).toInt(),
+        (theme.cursor.blue * 255).toInt()
+    )
+    view.invalidate()
+}
 
 @Composable
 private fun ColumnScope.SnippetsPanel(state: TerminalState, viewModel: TerminalViewModel) {

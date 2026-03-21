@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,7 +22,8 @@ data class SettingsState(
     val biometricEnabled: Boolean = false,
     val terminalFontSize: Int = 13,
     val darkMode: Boolean = true,
-    val defaultPort: Int = 22
+    val defaultPort: Int = 22,
+    val terminalTheme: String = "Default"
 )
 
 @HiltViewModel
@@ -36,6 +38,7 @@ class SettingsViewModel @Inject constructor(
     private val fontSizeKey = intPreferencesKey("terminal_font_size")
     private val darkModeKey = booleanPreferencesKey("dark_mode")
     private val defaultPortKey = intPreferencesKey("default_port")
+    private val terminalThemeKey = stringPreferencesKey("terminal_theme")
 
     init {
         viewModelScope.launch {
@@ -45,7 +48,8 @@ class SettingsViewModel @Inject constructor(
                         biometricEnabled = prefs[biometricKey] ?: false,
                         terminalFontSize = prefs[fontSizeKey] ?: 13,
                         darkMode = prefs[darkModeKey] ?: true,
-                        defaultPort = prefs[defaultPortKey] ?: 22
+                        defaultPort = prefs[defaultPortKey] ?: 22,
+                        terminalTheme = prefs[terminalThemeKey] ?: "Default"
                     )
                 }
             }
@@ -55,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     fun setBiometric(enabled: Boolean) = save { it[biometricKey] = enabled }
     fun setFontSize(size: Int) = save { it[fontSizeKey] = size }
     fun setDarkMode(enabled: Boolean) = save { it[darkModeKey] = enabled }
+    fun setTerminalTheme(name: String) = save { it[terminalThemeKey] = name }
 
     private fun save(block: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         viewModelScope.launch {
