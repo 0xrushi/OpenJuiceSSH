@@ -19,6 +19,7 @@ fun ServerEntity.toDomain(): Server = Server(
     fingerprint = fingerprint,
     createdAt = createdAt,
     lastConnectedAt = lastConnectedAt,
+    proxyId = proxyId,
     sortOrder = sortOrder
 )
 
@@ -35,6 +36,7 @@ fun Server.toEntity(): ServerEntity = ServerEntity(
     fingerprint = fingerprint,
     createdAt = createdAt,
     lastConnectedAt = lastConnectedAt,
+    proxyId = proxyId,
     sortOrder = sortOrder
 )
 

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun SettingsScreen(
     onNavigateToAlerts: () -> Unit,
     onNavigateToKeys: () -> Unit,
+    onNavigateToProxies: () -> Unit,
     onNavigateToBiometric: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -99,6 +101,21 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Default.Notifications, null, modifier = Modifier.padding(end = 16.dp))
                 Text("Alert Rules", modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge)
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null)
+            }
+            HorizontalDivider()
+
+            // Proxies
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToProxies() }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.SettingsInputComponent, null, modifier = Modifier.padding(end = 16.dp))
+                Text("Proxies", modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyLarge)
                 Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null)
             }

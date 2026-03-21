@@ -5,9 +5,11 @@ import androidx.room.Room
 import com.daremote.app.core.database.AppDatabase
 import com.daremote.app.core.database.dao.AlertRuleDao
 import com.daremote.app.core.database.dao.ForwardingRuleDao
+import com.daremote.app.core.database.dao.ProxyDao
 import com.daremote.app.core.database.dao.ServerDao
 import com.daremote.app.core.database.dao.ServerGroupDao
 import com.daremote.app.core.database.dao.SnippetDao
+import com.daremote.app.core.database.dao.SshKeyDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +28,9 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "daremote.db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
 
     @Provides
@@ -43,4 +47,10 @@ object AppModule {
 
     @Provides
     fun provideAlertRuleDao(db: AppDatabase): AlertRuleDao = db.alertRuleDao()
+
+    @Provides
+    fun provideProxyDao(db: AppDatabase): ProxyDao = db.proxyDao()
+
+    @Provides
+    fun provideSshKeyDao(db: AppDatabase): SshKeyDao = db.sshKeyDao()
 }

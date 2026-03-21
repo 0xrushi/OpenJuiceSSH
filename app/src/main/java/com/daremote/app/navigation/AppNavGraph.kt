@@ -26,6 +26,8 @@ import com.daremote.app.feature.docker.ContainerDetailScreen
 import com.daremote.app.feature.alerts.AlertConfigScreen
 import com.daremote.app.feature.security.SshKeyManagerScreen
 import com.daremote.app.feature.settings.SettingsScreen
+import com.daremote.app.feature.proxies.AddEditProxyScreen
+import com.daremote.app.feature.proxies.ProxyListScreen
 
 @Composable
 fun AppNavGraph() {
@@ -37,6 +39,7 @@ fun AppNavGraph() {
         Screen.Connections.route,
         Screen.Forwarding.route,
         Screen.Snippets.route,
+        Screen.Proxies.route,
         Screen.Settings.route
     )
 
@@ -82,7 +85,29 @@ fun AppNavGraph() {
                 SettingsScreen(
                     onNavigateToAlerts = { navController.navigate(Screen.AlertConfig.route) },
                     onNavigateToKeys = { navController.navigate(Screen.SshKeyManager.route) },
+                    onNavigateToProxies = { navController.navigate(Screen.Proxies.route) },
                     onNavigateToBiometric = { navController.navigate(Screen.BiometricSetup.route) }
+                )
+            }
+
+            // Proxies
+            composable(Screen.Proxies.route) {
+                ProxyListScreen(
+                    onAddProxy = { navController.navigate(Screen.AddEditProxy.createRoute()) },
+                    onEditProxy = { id -> navController.navigate(Screen.AddEditProxy.createRoute(id)) }
+                )
+            }
+
+            composable(
+                route = Screen.AddEditProxy.route,
+                arguments = listOf(navArgument("proxyId") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                })
+            ) {
+                AddEditProxyScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveSuccess = { navController.popBackStack() }
                 )
             }
 
@@ -95,7 +120,10 @@ fun AppNavGraph() {
                     defaultValue = null
                 })
             ) {
-                AddEditServerScreen(onNavigateBack = { navController.popBackStack() })
+                AddEditServerScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToAddProxy = { navController.navigate(Screen.AddEditProxy.createRoute()) }
+                )
             }
 
             // Terminal
@@ -188,8 +216,6 @@ fun AppNavGraph() {
             composable(Screen.SshKeyManager.route) {
                 SshKeyManagerScreen(onNavigateBack = { navController.popBackStack() })
             }
-
-            // Settings sub-screens would go here
         }
     }
 }

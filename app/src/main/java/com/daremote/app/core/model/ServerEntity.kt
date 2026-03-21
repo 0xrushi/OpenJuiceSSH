@@ -30,5 +30,6 @@ data class ServerEntity(
     val fingerprint: String? = null,
     val createdAt: Long,
     val lastConnectedAt: Long? = null,
+    val proxyId: Long? = null,
     val sortOrder: Int = 0
 )

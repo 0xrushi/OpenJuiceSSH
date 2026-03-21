@@ -51,6 +51,13 @@ sealed class Screen(val route: String) {
     object AlertConfig : Screen("alerts/config")
     object AlertHistory : Screen("alerts/history")
 
+    // Proxies
+    object Proxies : Screen("proxies")
+    object AddEditProxy : Screen("proxies/edit?id={proxyId}") {
+        fun createRoute(proxyId: Long? = null) =
+            if (proxyId != null) "proxies/edit?id=$proxyId" else "proxies/edit"
+    }
+
     // Security
     object BiometricSetup : Screen("security/biometric")
     object SshKeyManager : Screen("security/keys")

@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -27,6 +28,7 @@ fun BottomNavBar(navController: NavController) {
         BottomNavItem("Connections", Icons.Default.Dns, Screen.Connections.route),
         BottomNavItem("Forwarding", Icons.Default.CompareArrows, Screen.Forwarding.route),
         BottomNavItem("Snippets", Icons.Default.Code, Screen.Snippets.route),
+        BottomNavItem("Proxies", Icons.Default.Public, Screen.Proxies.route),
         BottomNavItem("Settings", Icons.Default.Settings, Screen.Settings.route)
     )
 

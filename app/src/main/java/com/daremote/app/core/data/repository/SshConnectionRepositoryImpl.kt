@@ -3,7 +3,9 @@ package com.daremote.app.core.data.repository
 import com.daremote.app.core.data.ssh.SshSessionManager
 import com.daremote.app.core.domain.model.ConnectionStatus
 import com.daremote.app.core.domain.model.Server
+import com.daremote.app.core.domain.repository.ProxyRepository
 import com.daremote.app.core.domain.repository.SshConnectionRepository
+import com.daremote.app.core.domain.repository.SshKeyRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -11,12 +13,16 @@ import javax.inject.Singleton
 
 @Singleton
 class SshConnectionRepositoryImpl @Inject constructor(
-    private val sessionManager: SshSessionManager
+    private val sessionManager: SshSessionManager,
+    private val proxyRepository: ProxyRepository,
+    private val sshKeyRepository: SshKeyRepository
 ) : SshConnectionRepository {
 
     override suspend fun connect(server: Server): Result<Unit> {
         return try {
-            sessionManager.connect(server)
+            val proxy = server.proxyId?.let { proxyRepository.getProxyById(it) }
+            val proxyKey = proxy?.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+            sessionManager.connect(server, proxy, proxyKey)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

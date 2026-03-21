@@ -13,6 +13,7 @@ data class Server(
     val fingerprint: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val lastConnectedAt: Long? = null,
+    val proxyId: Long? = null,
     val sortOrder: Int = 0
 )
 
