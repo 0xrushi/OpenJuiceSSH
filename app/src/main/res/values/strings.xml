@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">DaRemote</string>
+    <string name="app_name">OpenJuiceSSH</string>
     <string name="tab_connections">Connections</string>
     <string name="tab_forwarding">Forwarding</string>
     <string name="tab_snippets">Snippets</string>

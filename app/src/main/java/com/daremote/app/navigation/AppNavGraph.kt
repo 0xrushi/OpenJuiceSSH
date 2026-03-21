@@ -83,10 +83,8 @@ fun AppNavGraph() {
 
             composable(Screen.Settings.route) {
                 SettingsScreen(
-                    onNavigateToAlerts = { navController.navigate(Screen.AlertConfig.route) },
                     onNavigateToKeys = { navController.navigate(Screen.SshKeyManager.route) },
-                    onNavigateToProxies = { navController.navigate(Screen.Proxies.route) },
-                    onNavigateToBiometric = { navController.navigate(Screen.BiometricSetup.route) }
+                    onNavigateToProxies = { navController.navigate(Screen.Proxies.route) }
                 )
             }
 

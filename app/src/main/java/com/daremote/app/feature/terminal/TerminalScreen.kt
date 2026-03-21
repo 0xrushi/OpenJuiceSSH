@@ -25,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.daremote.app.core.domain.model.Snippet
 import com.daremote.app.core.ui.theme.*
+import com.daremote.app.feature.settings.SettingsViewModel
 import com.termux.view.TerminalView
 
 private val PanelIndicator = Color(0xFF26C6DA)
@@ -33,9 +34,11 @@ private val PanelIndicator = Color(0xFF26C6DA)
 @Composable
 fun TerminalScreen(
     onNavigateBack: () -> Unit,
-    viewModel: TerminalViewModel = hiltViewModel()
+    viewModel: TerminalViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
     var showFnKeys by remember { mutableStateOf(false) }
 
     val currentSession = state.sessions.find { it.id == state.currentSessionId }
@@ -139,7 +142,7 @@ fun TerminalScreen(
                 .padding(padding)
         ) {
             when (state.activePanel) {
-                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel)
+                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize)
                 TerminalPanel.SFTP -> DualPaneSftpScreen(state, viewModel)
                 TerminalPanel.SNIPPETS -> SnippetsPanel(state, viewModel)
             }
@@ -151,7 +154,8 @@ fun TerminalScreen(
 private fun ColumnScope.TerminalPanelContent(
     state: TerminalState,
     terminalSession: com.termux.terminal.TerminalSession?,
-    viewModel: TerminalViewModel
+    viewModel: TerminalViewModel,
+    fontSize: Int
 ) {
     // Session tabs + new session button
     Row(
@@ -196,7 +200,7 @@ private fun ColumnScope.TerminalPanelContent(
                 factory = { ctx ->
                     TerminalView(ctx, null).apply {
                         setTerminalViewClient(viewModel)
-                        setTextSize(14)
+                        setTextSize(fontSize)
                         attachSession(terminalSession)
                         viewModel.setTerminalView(this)
                         isFocusable = true
@@ -207,6 +211,7 @@ private fun ColumnScope.TerminalPanelContent(
                 modifier = Modifier.fillMaxSize(),
                 update = { view ->
                     view.setTerminalViewClient(viewModel)
+                    view.setTextSize(fontSize)
                     viewModel.setTerminalView(view)
                     if (view.mTermSession != terminalSession) {
                         view.attachSession(terminalSession)
