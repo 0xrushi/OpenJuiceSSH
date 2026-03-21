@@ -6,6 +6,7 @@ import com.daremote.app.core.domain.model.ForwardingType
 import com.daremote.app.core.domain.model.TunnelState
 import com.daremote.app.core.domain.repository.ForwardingRepository
 import com.daremote.app.core.domain.repository.ServerRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +33,8 @@ class TunnelManager @Inject constructor(
     private val tunnelJobs = mutableMapOf<Long, Job>()
     private val _tunnelStates = MutableStateFlow<Map<Long, TunnelState>>(emptyMap())
     val tunnelStates: StateFlow<Map<Long, TunnelState>> = _tunnelStates
+    private val _tunnelErrors = MutableStateFlow<Map<Long, String>>(emptyMap())
+    val tunnelErrors: StateFlow<Map<Long, String>> = _tunnelErrors
 
     fun startTunnel(rule: ForwardingRule) {
         if (tunnelJobs.containsKey(rule.id)) return
@@ -60,17 +63,19 @@ class TunnelManager @Inject constructor(
                             val serverSocket = ServerSocket()
                             serverSocket.reuseAddress = true
                             serverSocket.bind(InetSocketAddress(rule.localHost, rule.localPort))
-                            val forwarder = client.newLocalPortForwarder(params, serverSocket)
-                            updateState(rule.id, TunnelState.ACTIVE)
-                            forwardingRepository.setActive(rule.id, true)
-                            retryDelay = 1000L
-                            forwarder.listen() // Blocks until closed
+                            try {
+                                val forwarder = client.newLocalPortForwarder(params, serverSocket)
+                                updateState(rule.id, TunnelState.ACTIVE)
+                                forwardingRepository.setActive(rule.id, true)
+                                retryDelay = 1000L
+                                forwarder.listen() // Blocks until closed
+                            } finally {
+                                runCatching { serverSocket.close() }
+                            }
                         }
                         ForwardingType.REMOTE -> {
                             val rpf = client.remotePortForwarder
-                            val forward = RemotePortForwarder.Forward(
-                                rule.localPort,
-                            )
+                            val forward = RemotePortForwarder.Forward(rule.localPort)
                             rpf.bind(
                                 forward,
                                 SocketForwardingConnectListener(
@@ -83,20 +88,20 @@ class TunnelManager @Inject constructor(
                             updateState(rule.id, TunnelState.ACTIVE)
                             forwardingRepository.setActive(rule.id, true)
                             retryDelay = 1000L
-                            // Keep alive until cancelled
                             while (isActive && sessionManager.isConnected(rule.serverId)) {
                                 delay(5000)
                             }
                         }
                         ForwardingType.DYNAMIC -> {
-                            // Dynamic forwarding (SOCKS) implementation is not provided out-of-the-box by sshj.
-                            // It requires a SOCKS server implementation that opens a newDirectConnection for each request.
-                            updateState(rule.id, TunnelState.ERROR)
                             throw UnsupportedOperationException("Dynamic port forwarding (SOCKS) is not yet implemented")
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     updateState(rule.id, TunnelState.ERROR)
+                    _tunnelErrors.value = _tunnelErrors.value.toMutableMap()
+                        .apply { put(rule.id, e.message ?: "Unknown error") }
                 }
                 forwardingRepository.setActive(rule.id, false)
                 delay(retryDelay)
@@ -109,6 +114,7 @@ class TunnelManager @Inject constructor(
     fun stopTunnel(ruleId: Long) {
         tunnelJobs.remove(ruleId)?.cancel()
         updateState(ruleId, TunnelState.STOPPED)
+        _tunnelErrors.value = _tunnelErrors.value.toMutableMap().apply { remove(ruleId) }
         scope.launch { forwardingRepository.setActive(ruleId, false) }
     }
 

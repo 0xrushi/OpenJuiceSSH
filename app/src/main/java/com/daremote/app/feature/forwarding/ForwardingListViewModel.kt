@@ -8,17 +8,18 @@ import com.daremote.app.core.domain.repository.ForwardingRepository
 import com.daremote.app.core.service.TunnelManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ForwardingListState(
     val rules: List<ForwardingRule> = emptyList(),
     val tunnelStates: Map<Long, TunnelState> = emptyMap(),
-    val isLoading: Boolean = true
+    val tunnelErrors: Map<Long, String> = emptyMap(),
+    val isLoading: Boolean = true,
+    val snackbarMessage: String? = null
 )
 
 @HiltViewModel
@@ -27,12 +28,32 @@ class ForwardingListViewModel @Inject constructor(
     private val tunnelManager: TunnelManager
 ) : ViewModel() {
 
-    val state: StateFlow<ForwardingListState> = combine(
-        forwardingRepository.getAllRules(),
-        tunnelManager.tunnelStates
-    ) { rules, states ->
-        ForwardingListState(rules = rules, tunnelStates = states, isLoading = false)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ForwardingListState())
+    private val _state = MutableStateFlow(ForwardingListState())
+    val state: StateFlow<ForwardingListState> = _state
+
+    init {
+        viewModelScope.launch {
+            combine(
+                forwardingRepository.getAllRules(),
+                tunnelManager.tunnelStates,
+                tunnelManager.tunnelErrors
+            ) { rules, states, errors ->
+                Triple(rules, states, errors)
+            }.collect { (rules, states, errors) ->
+                val prevErrors = _state.value.tunnelErrors
+                val newErrorEntry = errors.entries.firstOrNull { (id, msg) -> prevErrors[id] != msg }
+                _state.update {
+                    it.copy(
+                        rules = rules,
+                        tunnelStates = states,
+                        tunnelErrors = errors,
+                        isLoading = false,
+                        snackbarMessage = newErrorEntry?.let { (_, msg) -> msg } ?: it.snackbarMessage
+                    )
+                }
+            }
+        }
+    }
 
     fun toggleTunnel(rule: ForwardingRule) {
         val currentState = tunnelManager.tunnelStates.value[rule.id]
@@ -48,5 +69,9 @@ class ForwardingListViewModel @Inject constructor(
             tunnelManager.stopTunnel(rule.id)
             forwardingRepository.deleteRule(rule)
         }
+    }
+
+    fun snackbarShown() {
+        _state.update { it.copy(snackbarMessage = null) }
     }
 }
