@@ -98,6 +98,7 @@ fun ConnectionListScreen(
                             server = server,
                             status = state.connectionStatuses[server.id]
                                 ?: ConnectionStatus.DISCONNECTED,
+                            stats = state.serverStats[server.id],
                             onConnect = { viewModel.connect(server) },
                             onDisconnect = { viewModel.disconnect(server.id) },
                             onEdit = { onNavigateToEditServer(server.id) },
