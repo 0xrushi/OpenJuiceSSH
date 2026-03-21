@@ -8,15 +8,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -26,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.daremote.app.core.domain.model.RemoteFile
 import com.daremote.app.core.domain.model.Snippet
 import com.daremote.app.core.ui.theme.*
 import com.termux.view.TerminalView
@@ -144,7 +140,7 @@ fun TerminalScreen(
         ) {
             when (state.activePanel) {
                 TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel)
-                TerminalPanel.SFTP -> SftpPanel(state, viewModel)
+                TerminalPanel.SFTP -> DualPaneSftpScreen(state, viewModel)
                 TerminalPanel.SNIPPETS -> SnippetsPanel(state, viewModel)
             }
         }
@@ -241,86 +237,6 @@ private fun ColumnScope.TerminalPanelContent(
     }
 }
 
-@Composable
-private fun ColumnScope.SftpPanel(state: TerminalState, viewModel: TerminalViewModel) {
-    // Path breadcrumb row
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(TerminalToolbarBackground)
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (state.sftpPath != "/") {
-            IconButton(
-                onClick = { viewModel.sftpNavigateUp() },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Up", tint = Color.White, modifier = Modifier.size(18.dp))
-            }
-        } else {
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(
-            text = state.sftpPath,
-            color = PanelIndicator,
-            style = TextStyle(fontSize = 12.sp, fontFamily = FontFamily.Monospace),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-    }
-
-    if (state.sftpLoading) {
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = PanelIndicator)
-        }
-    } else if (state.sftpFiles.isEmpty()) {
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Text("Empty directory", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp)
-        }
-    } else {
-        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            items(state.sftpFiles) { file ->
-                SftpFileRow(file = file, onNavigate = { viewModel.sftpNavigateTo(file.path) })
-                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SftpFileRow(file: RemoteFile, onNavigate: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (file.isDirectory) Modifier.clickable(onClick = onNavigate) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
-            contentDescription = null,
-            tint = if (file.isDirectory) PanelIndicator else Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = file.name,
-                color = Color.White,
-                style = TextStyle(fontSize = 13.sp)
-            )
-            if (!file.isDirectory) {
-                Text(
-                    text = formatFileSize(file.size),
-                    color = Color.White.copy(alpha = 0.4f),
-                    style = TextStyle(fontSize = 11.sp)
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun ColumnScope.SnippetsPanel(state: TerminalState, viewModel: TerminalViewModel) {
@@ -435,13 +351,6 @@ fun RowScope.TerminalKey(
             )
         )
     }
-}
-
-private fun formatFileSize(bytes: Long): String = when {
-    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
-    bytes >= 1_048_576L -> "%.1f MB".format(bytes / 1_048_576.0)
-    bytes >= 1_024L -> "%.1f KB".format(bytes / 1_024.0)
-    else -> "$bytes B"
 }
 
 fun getFnCode(n: Int): String = when (n) {
