@@ -23,6 +23,8 @@ class AlertWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val alertRepository: AlertRepository,
     private val serverRepository: ServerRepository,
+    private val proxyRepository: com.daremote.app.core.domain.repository.ProxyRepository,
+    private val sshKeyRepository: com.daremote.app.core.domain.repository.SshKeyRepository,
     private val sessionManager: SshSessionManager,
     private val commandExecutor: SshCommandExecutor
 ) : CoroutineWorker(appContext, workerParams) {
@@ -38,7 +40,10 @@ class AlertWorker @AssistedInject constructor(
 
             try {
                 if (!sessionManager.isConnected(serverId)) {
-                    sessionManager.connect(server)
+                    val proxy = server.proxyId?.let { proxyRepository.getProxyById(it) }
+                    val proxyKeyRef = proxy?.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+                    val serverKeyRef = server.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+                    sessionManager.connect(server, proxy, proxyKeyRef, serverKeyRef)
                 }
 
                 for (rule in serverRules) {

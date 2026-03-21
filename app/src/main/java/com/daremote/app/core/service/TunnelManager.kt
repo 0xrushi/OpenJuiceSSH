@@ -29,7 +29,8 @@ class TunnelManager @Inject constructor(
     private val sessionManager: SshSessionManager,
     private val forwardingRepository: ForwardingRepository,
     private val serverRepository: ServerRepository,
-    private val proxyRepository: ProxyRepository
+    private val proxyRepository: ProxyRepository,
+    private val sshKeyRepository: com.daremote.app.core.domain.repository.SshKeyRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val tunnelJobs = mutableMapOf<Long, Job>()
@@ -51,7 +52,9 @@ class TunnelManager @Inject constructor(
 
                     if (!sessionManager.isConnected(rule.serverId)) {
                         val proxy = rule.proxyId?.let { proxyRepository.getProxyById(it) }
-                        sessionManager.connect(server, proxy)
+                        val proxyKeyRef = proxy?.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+                        val serverKeyRef = server.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+                        sessionManager.connect(server, proxy, proxyKeyRef, serverKeyRef)
                     }
 
                     val client = sessionManager.getSession(rule.serverId)
