@@ -77,7 +77,21 @@ fun TerminalScreen(
                 )
             )
         },
-        bottomBar = {
+        containerColor = terminalTheme.background,
+        contentWindowInsets = WindowInsets(0)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
+        ) {
+            when (state.activePanel) {
+                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize, terminalTheme)
+                TerminalPanel.SFTP -> DualPaneSftpScreen(state, viewModel)
+                TerminalPanel.SNIPPETS -> SnippetsPanel(state, viewModel)
+            }
             if (state.activePanel == TerminalPanel.TERMINAL) {
                 Surface(
                     color = terminalTheme.toolbar,
@@ -86,7 +100,6 @@ fun TerminalScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
                             .padding(vertical = 2.dp)
                     ) {
                         if (showFnKeys) {
@@ -134,19 +147,6 @@ fun TerminalScreen(
                         }
                     }
                 }
-            }
-        },
-        containerColor = terminalTheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (state.activePanel) {
-                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize, terminalTheme)
-                TerminalPanel.SFTP -> DualPaneSftpScreen(state, viewModel)
-                TerminalPanel.SNIPPETS -> SnippetsPanel(state, viewModel)
             }
         }
     }
