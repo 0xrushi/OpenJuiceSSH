@@ -102,4 +102,8 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
+
+    // Terminal
+    implementation(libs.termux.view)
+    implementation(libs.termux.emulator)
 }

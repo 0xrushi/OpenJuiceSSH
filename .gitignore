@@ -1,6 +1,7 @@
 # Gradle
 .gradle/
 build/
+app/build/
 !gradle/wrapper/gradle-wrapper.jar
 
 # IDE - Android Studio / IntelliJ
@@ -8,18 +9,27 @@ build/
 *.iml
 *.iws
 *.ipr
+out/
+gen/
 
 # Local configuration
 local.properties
+.claude/
+.gemini/
 
 # Android
 *.apk
 *.aab
 *.ap_
 *.dex
+captures/
+.externalNativeBuild
+.cxx/
+.navigation/
 
 # Kotlin
 *.class
+.kotlin/
 
 # OS
 .DS_Store
@@ -28,6 +38,15 @@ Thumbs.db
 # Keystore
 *.jks
 *.keystore
+*.pk8
+*.pem
 
 # Log files
 *.log
+
+# Memory dumps
+*.hprof
+
+# User-specific
+.last_build_id
+.gradle/8.11.1/checksums/sha1-checksums.bin
