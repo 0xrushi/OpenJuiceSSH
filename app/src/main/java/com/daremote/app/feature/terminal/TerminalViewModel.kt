@@ -7,8 +7,12 @@ import android.view.inputmethod.InputMethodManager
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.daremote.app.core.data.ssh.SftpClient
 import com.daremote.app.core.data.ssh.SshSessionManager
+import com.daremote.app.core.domain.model.RemoteFile
+import com.daremote.app.core.domain.model.Snippet
 import com.daremote.app.core.domain.repository.ServerRepository
+import com.daremote.app.core.domain.repository.SnippetRepository
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -28,6 +32,8 @@ import java.io.OutputStream
 import java.lang.ref.WeakReference
 import javax.inject.Inject
 
+enum class TerminalPanel { TERMINAL, SFTP, SNIPPETS }
+
 data class TerminalSessionData(
     val id: Int,
     val name: String,
@@ -40,13 +46,20 @@ data class TerminalState(
     val currentSessionId: Int = 0,
     val serverName: String = "",
     val isConnected: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val activePanel: TerminalPanel = TerminalPanel.TERMINAL,
+    val snippets: List<Snippet> = emptyList(),
+    val sftpPath: String = "/",
+    val sftpFiles: List<RemoteFile> = emptyList(),
+    val sftpLoading: Boolean = false
 )
 
 @HiltViewModel
 class TerminalViewModel @Inject constructor(
     private val sessionManager: SshSessionManager,
     private val serverRepository: ServerRepository,
+    private val snippetRepository: SnippetRepository,
+    private val sftpClient: SftpClient,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context
 ) : ViewModel(), TerminalSessionClient, TerminalViewClient {
@@ -58,6 +71,7 @@ class TerminalViewModel @Inject constructor(
 
     private val shellMap = mutableMapOf<Int, Pair<Session.Shell, OutputStream>>()
     private var terminalViewRef: WeakReference<TerminalView>? = null
+    private val sftpPathStack = mutableListOf("/")
 
     init {
         viewModelScope.launch {
@@ -76,6 +90,12 @@ class TerminalViewModel @Inject constructor(
                 openNewSession()
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Connection failed: ${e.message}") }
+            }
+        }
+
+        viewModelScope.launch {
+            snippetRepository.getAllSnippets().collect { snippets ->
+                _state.update { it.copy(snippets = snippets) }
             }
         }
     }
@@ -125,15 +145,9 @@ class TerminalViewModel @Inject constructor(
                         10000,
                         this@TerminalViewModel
                     )
-                    // initializeEmulator creates the emulator BEFORE starting the subprocess.
-                    // Even if the subprocess fails, the emulator is still usable.
                     try {
                         session.initializeEmulator(80, 24)
-                    } catch (_: Exception) {
-                        // Subprocess may fail on some devices (e.g. /system/bin/sh inaccessible).
-                        // The emulator is already set at this point, so we can still use it
-                        // by feeding SSH output directly via emulator.append().
-                    }
+                    } catch (_: Exception) { }
                     session
                 }
 
@@ -165,6 +179,40 @@ class TerminalViewModel @Inject constructor(
         _state.update { it.copy(currentSessionId = sessionId) }
     }
 
+    fun setActivePanel(panel: TerminalPanel) {
+        _state.update { it.copy(activePanel = panel) }
+        if (panel == TerminalPanel.SFTP && _state.value.sftpFiles.isEmpty()) {
+            sftpNavigateTo("/")
+        }
+    }
+
+    fun sftpNavigateTo(path: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(sftpLoading = true) }
+            try {
+                val files = sftpClient.listDir(serverId, path)
+                    .sortedWith(compareByDescending<RemoteFile> { it.isDirectory }.thenBy { it.name })
+                if (path != sftpPathStack.lastOrNull()) sftpPathStack.add(path)
+                _state.update { it.copy(sftpPath = path, sftpFiles = files, sftpLoading = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(sftpLoading = false) }
+            }
+        }
+    }
+
+    fun sftpNavigateUp() {
+        if (sftpPathStack.size <= 1) return
+        sftpPathStack.removeLastOrNull()
+        val parent = sftpPathStack.lastOrNull() ?: "/"
+        sftpNavigateTo(parent)
+    }
+
+    fun executeSnippet(snippet: Snippet) {
+        sendInput(_state.value.currentSessionId, (snippet.command + "\n").toByteArray())
+        viewModelScope.launch { snippetRepository.markUsed(snippet.id) }
+        _state.update { it.copy(activePanel = TerminalPanel.TERMINAL) }
+    }
+
     private fun readShellOutput(sessionId: Int, inputStream: InputStream, termSession: TerminalSession) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -172,8 +220,6 @@ class TerminalViewModel @Inject constructor(
                 while (true) {
                     val bytesRead = inputStream.read(buffer)
                     if (bytesRead == -1) break
-                    // Write directly to the terminal emulator, bypassing the PTY.
-                    // This works even if the local subprocess failed to start.
                     val emulator = termSession.emulator ?: continue
                     emulator.append(buffer, bytesRead)
                     terminalViewRef?.get()?.let { view ->
@@ -236,7 +282,7 @@ class TerminalViewModel @Inject constructor(
         val sessionId = getSessionId(session)
         val bytes: ByteArray? = when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> "\r".toByteArray()
-            KeyEvent.KEYCODE_DEL -> byteArrayOf(0x7f) // Backspace -> DEL
+            KeyEvent.KEYCODE_DEL -> byteArrayOf(0x7f)
             KeyEvent.KEYCODE_FORWARD_DEL -> "\u001b[3~".toByteArray()
             KeyEvent.KEYCODE_TAB -> "\t".toByteArray()
             KeyEvent.KEYCODE_ESCAPE -> "\u001b".toByteArray()
