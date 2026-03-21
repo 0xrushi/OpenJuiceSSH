@@ -1,5 +1,6 @@
 package com.daremote.app.core.data.ssh
 
+import android.util.Log
 import com.daremote.app.core.domain.model.AuthType
 import com.daremote.app.core.domain.model.ConnectionStatus
 import com.daremote.app.core.domain.model.Server
@@ -32,19 +33,21 @@ class SshSessionManager @Inject constructor(
     suspend fun connect(server: Server): SSHClient = withContext(Dispatchers.IO) {
         updateStatus(server.id, ConnectionStatus.CONNECTING)
         try {
+            Log.d("SshSessionManager", "Connecting to ${server.host}:${server.port} as ${server.username}")
             val client = SSHClient()
             client.addHostKeyVerifier(PromiscuousVerifier())
             client.connect(server.host, server.port)
 
             when (server.authType) {
                 AuthType.PASSWORD -> {
+                    Log.d("SshSessionManager", "Using password auth. CredRef: ${server.credentialRef}")
                     val password = credentialManager.retrieve(server.credentialRef)
                         ?: throw IllegalStateException("Password not found for server ${server.name}")
                     client.authPassword(server.username, password)
                 }
                 AuthType.KEY, AuthType.KEY_PASSPHRASE -> {
+                    Log.d("SshSessionManager", "Using key auth. CredRef: ${server.credentialRef}")
                     val privateKeyStr = server.sshKeyId?.let { keyId ->
-                        // Key is stored via SshKeyManager
                         sshKeyManager.getPrivateKey(server.credentialRef)
                     } ?: credentialManager.retrieve(server.credentialRef)
                     ?: throw IllegalStateException("SSH key not found for server ${server.name}")
@@ -56,8 +59,10 @@ class SshSessionManager @Inject constructor(
 
             sessions[server.id] = client
             updateStatus(server.id, ConnectionStatus.CONNECTED)
+            Log.d("SshSessionManager", "Successfully connected to ${server.name}")
             client
         } catch (e: Exception) {
+            Log.e("SshSessionManager", "Failed to connect to ${server.name}", e)
             updateStatus(server.id, ConnectionStatus.ERROR)
             throw e
         }

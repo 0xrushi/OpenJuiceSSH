@@ -4,7 +4,7 @@
             "outputFile": "com.daremote.app-mergeDebugResources-74:/values-v30/values-v30.xml",
             "map": [
                 {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/b5dc9478ad5103c5d829b90b93f95697/transformed/material3-release/res/values-v30/values-v30.xml",
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/fe44cef6baccf8d3db8623a49384b4e8/transformed/material3-release/res/values-v30/values-v30.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -16,7 +18,14 @@ class DaRemoteApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        setupSecurityProviders()
         createNotificationChannels()
+    }
+
+    private fun setupSecurityProviders() {
+        // Remove existing BC provider if any to avoid conflicts and add the one from our dependencies
+        Security.removeProvider("BC")
+        Security.addProvider(BouncyCastleProvider())
     }
 
     override val workManagerConfiguration: Configuration

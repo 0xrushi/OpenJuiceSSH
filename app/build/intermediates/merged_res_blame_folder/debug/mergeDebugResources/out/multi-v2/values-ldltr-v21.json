@@ -4,7 +4,7 @@
             "outputFile": "com.daremote.app-mergeDebugResources-74:/values-ldltr-v21/values-ldltr-v21.xml",
             "map": [
                 {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/4496bcd347b0fee1359546f090d1b3fa/transformed/appcompat-1.6.1/res/values-ldltr-v21/values-ldltr-v21.xml",
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/e602c44924e0f28f808ce3173c699698/transformed/appcompat-1.6.1/res/values-ldltr-v21/values-ldltr-v21.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

@@ -84,6 +84,8 @@ dependencies {
     // SSH
     implementation(libs.sshj)
     implementation(libs.eddsa)
+    implementation(libs.bouncycastle.prov)
+    implementation(libs.bouncycastle.pkix)
 
     // Security
     implementation(libs.security.crypto)

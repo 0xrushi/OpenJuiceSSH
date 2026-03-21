@@ -4,7 +4,7 @@
             "outputFile": "com.daremote.app-mergeDebugResources-74:/values-pt/values-pt.xml",
             "map": [
                 {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/3420115a125e0c11af2dcaf471ac3076/transformed/biometric-1.2.0-alpha05/res/values-pt/values-pt.xml",
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/6b93b5d1ba934c8ec3f66af9b08306df/transformed/biometric-1.2.0-alpha05/res/values-pt/values-pt.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -21,41 +21,7 @@
                     }
                 },
                 {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/3e28de05aa44765ef0511479769e18d3/transformed/foundation-release/res/values-pt/values-pt.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,138",
-                        "endColumns": "82,84",
-                        "endOffsets": "133,218"
-                    },
-                    "to": {
-                        "startLines": "133,134",
-                        "startColumns": "4,4",
-                        "startOffsets": "14144,14227",
-                        "endColumns": "82,84",
-                        "endOffsets": "14222,14307"
-                    }
-                },
-                {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/0347af09a0799b0205c27c0aa6abbcdf/transformed/core-1.15.0/res/values-pt/values-pt.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,152,254,353,453,563,673,793",
-                        "endColumns": "96,101,98,99,109,109,119,100",
-                        "endOffsets": "147,249,348,448,558,668,788,889"
-                    },
-                    "to": {
-                        "startLines": "31,32,33,34,35,36,37,129",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "3108,3205,3307,3406,3506,3616,3726,13787",
-                        "endColumns": "96,101,98,99,109,109,119,100",
-                        "endOffsets": "3200,3302,3401,3501,3611,3721,3841,13883"
-                    }
-                },
-                {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/f655fe40f0ec4d6f0777f0478241841f/transformed/ui-release/res/values-pt/values-pt.xml",
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/dc12037c1dd137112d868f56e18c2906/transformed/ui-release/res/values-pt/values-pt.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -72,7 +38,7 @@
                     }
                 },
                 {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/4496bcd347b0fee1359546f090d1b3fa/transformed/appcompat-1.6.1/res/values-pt/values-pt.xml",
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/e602c44924e0f28f808ce3173c699698/transformed/appcompat-1.6.1/res/values-pt/values-pt.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -89,7 +55,41 @@
                     }
                 },
                 {
-                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/b5dc9478ad5103c5d829b90b93f95697/transformed/material3-release/res/values-pt/values-pt.xml",
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/94a260622b06508535c4d40f3ffe15e9/transformed/foundation-release/res/values-pt/values-pt.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,138",
+                        "endColumns": "82,84",
+                        "endOffsets": "133,218"
+                    },
+                    "to": {
+                        "startLines": "133,134",
+                        "startColumns": "4,4",
+                        "startOffsets": "14144,14227",
+                        "endColumns": "82,84",
+                        "endOffsets": "14222,14307"
+                    }
+                },
+                {
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/c99b8ee1e22f1bfb20651ee9fb193510/transformed/core-1.15.0/res/values-pt/values-pt.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,152,254,353,453,563,673,793",
+                        "endColumns": "96,101,98,99,109,109,119,100",
+                        "endOffsets": "147,249,348,448,558,668,788,889"
+                    },
+                    "to": {
+                        "startLines": "31,32,33,34,35,36,37,129",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "3108,3205,3307,3406,3506,3616,3726,13787",
+                        "endColumns": "96,101,98,99,109,109,119,100",
+                        "endOffsets": "3200,3302,3401,3501,3611,3721,3841,13883"
+                    }
+                },
+                {
+                    "source": "/home/doraemon/.gradle/caches/8.11.1/transforms/fe44cef6baccf8d3db8623a49384b4e8/transformed/material3-release/res/values-pt/values-pt.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",

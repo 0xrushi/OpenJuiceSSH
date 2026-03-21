@@ -14,6 +14,7 @@ work = "2.10.0"
 security-crypto = "1.1.0-alpha06"
 coil = "2.7.0"
 ksp = "2.1.0-1.0.29"
+bouncycastle = "1.78.1"
 
 [libraries]
 # Compose
@@ -45,6 +46,10 @@ room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 # SSH
 sshj = { group = "com.hierynomus", name = "sshj", version.ref = "sshj" }
 eddsa = { group = "net.i2p.crypto", name = "eddsa", version = "0.3.0" }
+
+# Bouncy Castle
+bouncycastle-prov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-pkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
 
 # Security
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
