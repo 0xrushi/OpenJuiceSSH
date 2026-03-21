@@ -1,0 +1,2 @@
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.connections.ConnectionListViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.connections.ConnectionListViewModel

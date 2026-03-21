@@ -1,0 +1,53 @@
+package com.daremote.app.core.data.mapper
+
+import com.daremote.app.core.domain.model.AuthType
+import com.daremote.app.core.domain.model.Server
+import com.daremote.app.core.domain.model.ServerGroup
+import com.daremote.app.core.model.ServerEntity
+import com.daremote.app.core.model.ServerGroupEntity
+
+fun ServerEntity.toDomain(): Server = Server(
+    id = id,
+    name = name,
+    host = host,
+    port = port,
+    username = username,
+    authType = AuthType.valueOf(authType),
+    credentialRef = credentialRef,
+    sshKeyId = sshKeyId,
+    groupId = groupId,
+    fingerprint = fingerprint,
+    createdAt = createdAt,
+    lastConnectedAt = lastConnectedAt,
+    sortOrder = sortOrder
+)
+
+fun Server.toEntity(): ServerEntity = ServerEntity(
+    id = id,
+    name = name,
+    host = host,
+    port = port,
+    username = username,
+    authType = authType.name,
+    credentialRef = credentialRef,
+    sshKeyId = sshKeyId,
+    groupId = groupId,
+    fingerprint = fingerprint,
+    createdAt = createdAt,
+    lastConnectedAt = lastConnectedAt,
+    sortOrder = sortOrder
+)
+
+fun ServerGroupEntity.toDomain(): ServerGroup = ServerGroup(
+    id = id,
+    name = name,
+    color = color,
+    sortOrder = sortOrder
+)
+
+fun ServerGroup.toEntity(): ServerGroupEntity = ServerGroupEntity(
+    id = id,
+    name = name,
+    color = color,
+    sortOrder = sortOrder
+)

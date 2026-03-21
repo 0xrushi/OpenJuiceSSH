@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="add_server">Add Server</string>
+    <string name="alert_notification_channel">Server Alerts</string>
+    <string name="app_name">DaRemote</string>
+    <string name="auth_key">SSH Key</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_type">Authentication Type</string>
+    <string name="cancel">Cancel</string>
+    <string name="connect">Connect</string>
+    <string name="delete">Delete</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="docker">Docker</string>
+    <string name="edit_server">Edit Server</string>
+    <string name="file_manager">File Manager</string>
+    <string name="host">Host</string>
+    <string name="monitoring">Monitoring</string>
+    <string name="no_servers">No servers added yet</string>
+    <string name="password">Password</string>
+    <string name="port">Port</string>
+    <string name="save">Save</string>
+    <string name="server_name">Server Name</string>
+    <string name="ssh_notification_channel">SSH Connections</string>
+    <string name="ssh_notification_text">%d active connection(s)</string>
+    <string name="ssh_notification_title">SSH Active</string>
+    <string name="tab_connections">Connections</string>
+    <string name="tab_forwarding">Forwarding</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_snippets">Snippets</string>
+    <string name="terminal">Terminal</string>
+    <string name="username">Username</string>
+    <style name="Theme.DaRemote" parent="android:Theme.Material.Light.NoActionBar"/>
+</resources>

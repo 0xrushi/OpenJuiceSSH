@@ -1,0 +1,9 @@
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.connections.ConnectionListViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.connections.ConnectionListViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.connections.AddEditServerViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.connections.AddEditServerViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.filemanager.FileManagerViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.filemanager.FileManagerViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.docker.ContainerDetailViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.docker.ContainerDetailViewModel
+-keep,allowobfuscation,allowshrinking class com.daremote.app.feature.docker.DockerListViewModel
