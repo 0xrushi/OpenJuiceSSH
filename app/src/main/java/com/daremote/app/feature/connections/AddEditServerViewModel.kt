@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.daremote.app.core.domain.model.AuthType
 import com.daremote.app.core.domain.model.Proxy
 import com.daremote.app.core.domain.model.Server
+import com.daremote.app.core.domain.model.SshKey
 import com.daremote.app.core.domain.repository.ProxyRepository
 import com.daremote.app.core.domain.repository.ServerRepository
+import com.daremote.app.core.domain.repository.SshKeyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,8 +22,10 @@ data class AddEditServerState(
     val username: String = "",
     val password: String = "",
     val authType: AuthType = AuthType.PASSWORD,
+    val sshKeyId: Long? = null,
     val proxyId: Long? = null,
     val availableProxies: List<Proxy> = emptyList(),
+    val availableKeys: List<SshKey> = emptyList(),
     val isEditing: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
@@ -32,17 +36,18 @@ data class AddEditServerState(
 class AddEditServerViewModel @Inject constructor(
     private val serverRepository: ServerRepository,
     private val proxyRepository: ProxyRepository,
+    private val sshKeyRepository: SshKeyRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val serverId: Long? = savedStateHandle.get<String>("serverId")?.toLongOrNull()
     private val _internalState = MutableStateFlow(AddEditServerState())
-    
+
     val state: StateFlow<AddEditServerState> = combine(
         _internalState,
-        proxyRepository.getAllProxies()
-    ) { state, proxies ->
-        // If we just added a proxy, auto-select it if nothing was selected
+        proxyRepository.getAllProxies(),
+        sshKeyRepository.getAllKeys()
+    ) { state, proxies, keys ->
         val updatedProxyId = if (state.proxyId == null && proxies.size > state.availableProxies.size) {
             proxies.maxByOrNull { it.id }?.id
         } else {
@@ -50,10 +55,10 @@ class AddEditServerViewModel @Inject constructor(
         }
         state.copy(
             availableProxies = proxies,
+            availableKeys = keys,
             proxyId = updatedProxyId
         )
     }.onEach { newState ->
-        // Sync back the auto-selected proxyId to _internalState if it changed
         if (newState.proxyId != _internalState.value.proxyId) {
             _internalState.update { it.copy(proxyId = newState.proxyId) }
         }
@@ -77,6 +82,7 @@ class AddEditServerViewModel @Inject constructor(
                             port = server.port.toString(),
                             username = server.username,
                             authType = server.authType,
+                            sshKeyId = server.sshKeyId,
                             proxyId = server.proxyId,
                             isEditing = true
                         )
@@ -92,6 +98,7 @@ class AddEditServerViewModel @Inject constructor(
     fun updateUsername(username: String) = _internalState.update { it.copy(username = username) }
     fun updatePassword(password: String) = _internalState.update { it.copy(password = password) }
     fun updateAuthType(authType: AuthType) = _internalState.update { it.copy(authType = authType) }
+    fun updateSshKeyId(sshKeyId: Long?) = _internalState.update { it.copy(sshKeyId = sshKeyId) }
     fun updateProxyId(proxyId: Long?) = _internalState.update { it.copy(proxyId = proxyId) }
 
     fun save() {
@@ -112,6 +119,7 @@ class AddEditServerViewModel @Inject constructor(
                         port = portInt,
                         username = s.username,
                         authType = s.authType,
+                        sshKeyId = s.sshKeyId,
                         proxyId = s.proxyId
                     )
                     serverRepository.updateServer(
@@ -126,6 +134,7 @@ class AddEditServerViewModel @Inject constructor(
                         username = s.username,
                         authType = s.authType,
                         credentialRef = "",
+                        sshKeyId = s.sshKeyId,
                         proxyId = s.proxyId
                     )
                     serverRepository.saveServer(server, s.password)

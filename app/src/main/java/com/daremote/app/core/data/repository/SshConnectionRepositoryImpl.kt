@@ -21,8 +21,9 @@ class SshConnectionRepositoryImpl @Inject constructor(
     override suspend fun connect(server: Server): Result<Unit> {
         return try {
             val proxy = server.proxyId?.let { proxyRepository.getProxyById(it) }
-            val proxyKey = proxy?.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
-            sessionManager.connect(server, proxy, proxyKey)
+            val proxyKeyRef = proxy?.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+            val serverKeyRef = server.sshKeyId?.let { sshKeyRepository.getKeyById(it)?.privateKeyRef }
+            sessionManager.connect(server, proxy, proxyKeyRef, serverKeyRef)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

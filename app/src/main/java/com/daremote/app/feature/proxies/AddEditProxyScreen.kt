@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -253,6 +254,40 @@ fun SshKeyDropdown(
     keys: List<com.daremote.app.core.domain.model.SshKey>,
     onKeySelected: (Long?) -> Unit
 ) {
+    if (keys.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Column {
+                    Text(
+                        "No SSH keys found",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        "Go to Settings → SSH Key Manager to add one",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+        return
+    }
+
     var expanded by remember { mutableStateOf(false) }
     val selectedKey = keys.find { it.id == selectedKeyId }
 
@@ -272,13 +307,20 @@ fun SshKeyDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = { onKeySelected(null); expanded = false }
+            )
             keys.forEach { key ->
                 DropdownMenuItem(
-                    text = { Text(key.name) },
-                    onClick = {
-                        onKeySelected(key.id)
-                        expanded = false
-                    }
+                    text = {
+                        Column {
+                            Text(key.name)
+                            Text(key.type.name, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    onClick = { onKeySelected(key.id); expanded = false }
                 )
             }
         }

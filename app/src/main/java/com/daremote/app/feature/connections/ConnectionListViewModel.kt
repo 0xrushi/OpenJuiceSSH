@@ -60,6 +60,8 @@ class ConnectionListViewModel @Inject constructor(
     private val monitoringJobs = mutableMapOf<Long, Job>()
     private val prevNetBytes = mutableMapOf<Long, Pair<Long, Long>>()
     private val prevNetTime = mutableMapOf<Long, Long>()
+    // cpu fields: [user, nice, system, idle, iowait, irq, softirq, steal]
+    private val prevCpuJiffies = mutableMapOf<Long, LongArray>()
 
     val state: StateFlow<ConnectionListState> = combine(
         serverRepository.getAllServers(),
@@ -114,6 +116,7 @@ class ConnectionListViewModel @Inject constructor(
         monitoringJobs.remove(serverId)
         prevNetBytes.remove(serverId)
         prevNetTime.remove(serverId)
+        prevCpuJiffies.remove(serverId)
         _serverStats.update { it - serverId }
     }
 
@@ -121,9 +124,7 @@ class ConnectionListViewModel @Inject constructor(
         val loadAvgRaw = commandExecutor.execute(serverId, "cat /proc/loadavg").getOrNull()?.trim() ?: ""
         val loads = loadAvgRaw.split(" ").take(3).map { it.toFloatOrNull() ?: 0f }
 
-        val topRaw = commandExecutor.execute(serverId, "top -bn1 | grep -m1 '%Cpu\\|Cpu(s)'").getOrNull() ?: ""
-        val idle = Regex("""(\d+\.?\d*)\s*id""").find(topRaw)?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
-        val cpuPercent = (100f - idle).coerceAtLeast(0f)
+        val cpuPercent = parseCpuPercent(serverId)
 
         val memRaw = commandExecutor.execute(serverId, "free -m | grep '^Mem:'").getOrNull()?.trim() ?: ""
         val memParts = memRaw.split(Regex("\\s+"))
@@ -171,6 +172,28 @@ class ConnectionListViewModel @Inject constructor(
             loadAvg15 = loads.getOrElse(2) { 0f },
             osName = osName
         )
+    }
+
+    private suspend fun parseCpuPercent(serverId: Long): Float {
+        val statLine = commandExecutor.execute(serverId, "head -1 /proc/stat")
+            .getOrNull()?.trim() ?: return 0f
+        // format: "cpu  user nice system idle iowait irq softirq steal ..."
+        val fields = statLine.removePrefix("cpu").trim().split(Regex("\\s+"))
+        if (fields.size < 4) return 0f
+        val cur = LongArray(8) { fields.getOrNull(it)?.toLongOrNull() ?: 0L }
+        val curIdle = cur[3] + cur[4] // idle + iowait
+        val curTotal = cur.sum()
+
+        val prev = prevCpuJiffies[serverId]
+        prevCpuJiffies[serverId] = cur
+
+        if (prev == null) return 0f
+        val prevIdle = prev[3] + prev[4]
+        val prevTotal = prev.sum()
+        val deltaTotal = curTotal - prevTotal
+        val deltaIdle = curIdle - prevIdle
+        if (deltaTotal <= 0) return 0f
+        return ((deltaTotal - deltaIdle).toFloat() / deltaTotal * 100f).coerceIn(0f, 100f)
     }
 
     private fun parseNetworkBytes(netDev: String): Pair<Long, Long> {

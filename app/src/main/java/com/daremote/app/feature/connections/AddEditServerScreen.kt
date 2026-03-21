@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.daremote.app.core.domain.model.AuthType
 import com.daremote.app.core.domain.model.Proxy
+import com.daremote.app.core.domain.model.SshKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +116,15 @@ fun AddEditServerScreen(
             }
             Spacer(modifier = Modifier.height(8.dp))
 
+            if (state.authType == AuthType.KEY || state.authType == AuthType.KEY_PASSPHRASE) {
+                ServerSshKeyDropdown(
+                    selectedKeyId = state.sshKeyId,
+                    keys = state.availableKeys,
+                    onKeySelected = viewModel::updateSshKeyId
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             if (state.authType == AuthType.PASSWORD || state.authType == AuthType.KEY_PASSPHRASE) {
                 OutlinedTextField(
                     value = state.password,
@@ -190,6 +201,85 @@ fun AddEditServerScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ServerSshKeyDropdown(
+    selectedKeyId: Long?,
+    keys: List<SshKey>,
+    onKeySelected: (Long?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (keys.isEmpty()) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Column {
+                    Text(
+                        "No SSH keys found",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        "Go to Settings → SSH Key Manager to add one",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    var expanded by remember { mutableStateOf(false) }
+    val selectedKey = keys.find { it.id == selectedKeyId }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedKey?.name ?: "Select SSH Key",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("SSH Key") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = { onKeySelected(null); expanded = false }
+            )
+            keys.forEach { key ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(key.name)
+                            Text(key.type.name, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    onClick = { onKeySelected(key.id); expanded = false }
+                )
+            }
         }
     }
 }

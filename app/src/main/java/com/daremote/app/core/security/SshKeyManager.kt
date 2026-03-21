@@ -2,10 +2,14 @@ package com.daremote.app.core.security
 
 import com.daremote.app.core.domain.model.KeyType
 import com.daremote.app.core.domain.model.SshKey
+import net.schmizz.sshj.common.Buffer
 import net.schmizz.sshj.common.KeyType as SshjKeyType
-import java.io.StringWriter
 import java.security.KeyPair
 import java.security.KeyPairGenerator
+import java.util.Base64
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
+import java.io.StringWriter
 import javax.inject.Inject
 import javax.inject.Singleton
 import net.i2p.crypto.eddsa.KeyPairGenerator as EdDSAKeyPairGenerator
@@ -49,21 +53,53 @@ class SshKeyManager @Inject constructor(
         return credentialManager.retrieve(ref)
     }
 
+    fun importKey(name: String, privateKeyContent: String): SshKey {
+        val privateKeyRef = credentialManager.store(privateKeyContent)
+        val type = when {
+            privateKeyContent.contains("RSA PRIVATE KEY") -> KeyType.RSA
+            privateKeyContent.contains("EC PRIVATE KEY") || privateKeyContent.contains("ECDSA") -> KeyType.ECDSA
+            else -> KeyType.ED25519
+        }
+        return SshKey(
+            name = name,
+            type = type,
+            publicKey = "",
+            privateKeyRef = privateKeyRef,
+            hasPassphrase = false
+        )
+    }
+
     fun deleteKey(privateKeyRef: String) {
         credentialManager.delete(privateKeyRef)
     }
 
     private fun encodePublicKey(keyPair: KeyPair, type: KeyType): String {
-        val encoded = java.util.Base64.getEncoder().encodeToString(keyPair.public.encoded)
-        val prefix = when (type) {
+        // Encode in SSH wire format so it can be pasted directly into authorized_keys
+        val buf = Buffer.PlainBuffer()
+        val sshName = when (type) {
             KeyType.RSA -> "ssh-rsa"
             KeyType.ED25519 -> "ssh-ed25519"
-            KeyType.ECDSA -> "ecdsa-sha2-nistp256"
+            KeyType.ECDSA -> {
+                // Determine curve size for ECDSA
+                val pub = keyPair.public as java.security.interfaces.ECPublicKey
+                val bitLen = pub.params.order.bitLength()
+                "ecdsa-sha2-nistp$bitLen"
+            }
         }
-        return "$prefix $encoded"
+        
+        val sshjType = SshjKeyType.fromKey(keyPair.public)
+        sshjType.putPubKeyIntoBuffer(keyPair.public, buf)
+        val b64 = Base64.getEncoder().encodeToString(buf.compactData)
+        return "$sshName $b64"
     }
 
     private fun encodePrivateKey(keyPair: KeyPair, type: KeyType): String {
-        return java.util.Base64.getEncoder().encodeToString(keyPair.private.encoded)
+        // Use PKCS#8 encoding via BouncyCastle's PEM writer to ensure standard compatibility
+        val sw = java.io.StringWriter()
+        val pw = org.bouncycastle.openssl.jcajce.JcaPEMWriter(sw)
+        pw.writeObject(org.bouncycastle.asn1.pkcs.PrivateKeyInfo.getInstance(keyPair.private.encoded))
+        pw.flush()
+        pw.close()
+        return sw.toString()
     }
 }

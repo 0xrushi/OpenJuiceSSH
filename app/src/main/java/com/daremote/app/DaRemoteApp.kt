@@ -23,9 +23,13 @@ class DaRemoteApp : Application(), Configuration.Provider {
     }
 
     private fun setupSecurityProviders() {
-        // Remove existing BC provider if any to avoid conflicts and add the one from our dependencies
-        Security.removeProvider("BC")
-        Security.addProvider(BouncyCastleProvider())
+        // Remove existing providers to avoid conflicts
+        java.security.Security.removeProvider("BC")
+        java.security.Security.removeProvider("EdDSA")
+        
+        // Insert ours at the highest priority
+        java.security.Security.insertProviderAt(org.bouncycastle.jce.provider.BouncyCastleProvider(), 1)
+        java.security.Security.insertProviderAt(net.i2p.crypto.eddsa.EdDSASecurityProvider(), 2)
     }
 
     override val workManagerConfiguration: Configuration

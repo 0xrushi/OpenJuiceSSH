@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daremote.app.core.domain.model.KeyType
 import com.daremote.app.core.domain.model.SshKey
+import com.daremote.app.core.domain.repository.SshKeyRepository
 import com.daremote.app.core.security.SshKeyManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,31 +24,55 @@ data class SshKeyManagerState(
 
 @HiltViewModel
 class SshKeyManagerViewModel @Inject constructor(
-    private val sshKeyManager: SshKeyManager
+    private val sshKeyManager: SshKeyManager,
+    private val sshKeyRepository: SshKeyRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(SshKeyManagerState())
-    val state: StateFlow<SshKeyManagerState> = _state
+    private val _isGenerating = MutableStateFlow(false)
+    private val _error = MutableStateFlow<String?>(null)
 
-    // In a full impl, keys would be stored in Room. For now, in-memory list.
-    private val keysList = mutableListOf<SshKey>()
+    val state: StateFlow<SshKeyManagerState> = combine(
+        sshKeyRepository.getAllKeys(),
+        _isGenerating,
+        _error
+    ) { keys, isGenerating, error ->
+        SshKeyManagerState(keys = keys, isGenerating = isGenerating, error = error)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SshKeyManagerState())
 
     fun generateKey(name: String, type: KeyType) {
         viewModelScope.launch(Dispatchers.IO) {
-            _state.update { it.copy(isGenerating = true, error = null) }
+            _isGenerating.value = true
+            _error.value = null
             try {
                 val key = sshKeyManager.generateKeyPair(name, type)
-                keysList.add(key)
-                _state.update { it.copy(keys = keysList.toList(), isGenerating = false) }
+                sshKeyRepository.saveKey(key)
             } catch (e: Exception) {
-                _state.update { it.copy(isGenerating = false, error = e.message) }
+                _error.value = e.message
+            } finally {
+                _isGenerating.value = false
+            }
+        }
+    }
+
+    fun importKey(name: String, privateKeyContent: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isGenerating.value = true
+            _error.value = null
+            try {
+                val key = sshKeyManager.importKey(name, privateKeyContent)
+                sshKeyRepository.saveKey(key)
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isGenerating.value = false
             }
         }
     }
 
     fun deleteKey(key: SshKey) {
-        sshKeyManager.deleteKey(key.privateKeyRef)
-        keysList.removeAll { it.privateKeyRef == key.privateKeyRef }
-        _state.update { it.copy(keys = keysList.toList()) }
+        viewModelScope.launch {
+            sshKeyManager.deleteKey(key.privateKeyRef)
+            sshKeyRepository.deleteKey(key)
+        }
     }
 }
