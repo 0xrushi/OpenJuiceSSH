@@ -50,3 +50,6 @@ Thumbs.db
 # User-specific
 .last_build_id
 .gradle/8.11.1/checksums/sha1-checksums.bin
+app/release/output-metadata.json
+app/release/baselineProfiles/0/app-release.dm
+app/release/baselineProfiles/1/app-release.dm
