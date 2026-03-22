@@ -85,7 +85,7 @@ fun TerminalScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .consumeWindowInsets(padding)
-                .imePadding()
+                .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars))
         ) {
             when (state.activePanel) {
                 TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize, terminalTheme)
