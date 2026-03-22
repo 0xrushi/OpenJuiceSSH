@@ -45,8 +45,12 @@ To set up key-based authentication:
 
 ## 🛠️ Built With
 * **Kotlin** - Primary language for modern Android development.
-* **JSch / sshj** - (Or specify your SSH library here) for secure terminal sessions.
+* **sshj** - Modern SSHv2 library for Java/Kotlin.
+* **Bouncy Castle** - Cryptography library for secure communication.
+* **Termux View** - Terminal emulator component for a real terminal experience.
 * **Jetpack Compose** - For a smooth, reactive UI.
+* **Hilt** - Dependency injection for a clean architecture.
+* **Room** - Local database for server and identity persistence.
 
 ---
 
