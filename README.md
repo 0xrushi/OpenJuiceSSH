@@ -1,4 +1,4 @@
-# OpenJuiceSSH 📱⚡
+# OpenJuiceSSH 
 
 **OpenJuiceSSH** is a modern, open-source SSH and Telnet client for Android, inspired by the classic JuiceSSH and DaRemote experience. 
 It aims to bring back the clean, intuitive terminal interface that developers loved, while modernizing the backend for better performance and security on newer Android versions.
