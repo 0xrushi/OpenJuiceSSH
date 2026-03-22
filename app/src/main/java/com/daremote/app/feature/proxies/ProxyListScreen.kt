@@ -49,7 +49,11 @@ fun ProxyListScreen(
                     IconButton(onClick = onAddProxy) {
                         Icon(Icons.Default.Add, "Add Proxy")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                windowInsets = WindowInsets(0)
             )
         }
     ) { padding ->

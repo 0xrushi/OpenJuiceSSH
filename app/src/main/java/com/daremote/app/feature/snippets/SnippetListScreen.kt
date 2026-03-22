@@ -1,6 +1,7 @@
 package com.daremote.app.feature.snippets
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,6 +30,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +56,15 @@ fun SnippetListScreen(
     var serverPickerSnippet by remember { mutableStateOf<Snippet?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Command Snippets") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Command Snippets") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                windowInsets = WindowInsets(0)
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAdd) {
                 Icon(Icons.Default.Add, "Add Snippet")

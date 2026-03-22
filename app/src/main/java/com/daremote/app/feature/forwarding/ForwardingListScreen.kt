@@ -1,6 +1,7 @@
 package com.daremote.app.feature.forwarding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +31,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,7 +66,15 @@ fun ForwardingListScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Port Forwarding") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Port Forwarding") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                windowInsets = WindowInsets(0)
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAdd) {
                 Icon(Icons.Default.Add, "Add Rule")
