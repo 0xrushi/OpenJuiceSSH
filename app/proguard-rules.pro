@@ -19,6 +19,24 @@
 -dontwarn org.bouncycastle.**
 -keep class org.bouncycastle.** { *; }
 
+# Hilt / Dagger
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class dagger.** { *; }
+-keep class com.daremote.app.Hilt_DaRemoteApp { *; }
+-keep class com.daremote.app.DaRemoteApp_GeneratedInjector { *; }
+-keep class com.daremote.app.MainActivity_GeneratedInjector { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
+-keep class hilt_aggregated_deps.** { *; }
+-keep class * implements dagger.hilt.internal.GeneratedComponent { *; }
+-keep class * implements dagger.hilt.internal.GeneratedComponentManager { *; }
+-keep @dagger.hilt.InstallIn class * { *; }
+-keep @dagger.hilt.android.EarlyEntryPoint class * { *; }
+-keep @dagger.hilt.EntryPoint class * { *; }
+-keep @dagger.Module class * { *; }
+-keep @dagger.hilt.android.HiltAndroidApp class * { *; }
+-keep @dagger.hilt.android.AndroidEntryPoint class * { *; }
+
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *

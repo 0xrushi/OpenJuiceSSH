@@ -48,20 +48,10 @@ class AddEditServerViewModel @Inject constructor(
         proxyRepository.getAllProxies(),
         sshKeyRepository.getAllKeys()
     ) { state, proxies, keys ->
-        val updatedProxyId = if (state.proxyId == null && proxies.size > state.availableProxies.size) {
-            proxies.maxByOrNull { it.id }?.id
-        } else {
-            state.proxyId
-        }
         state.copy(
             availableProxies = proxies,
-            availableKeys = keys,
-            proxyId = updatedProxyId
+            availableKeys = keys
         )
-    }.onEach { newState ->
-        if (newState.proxyId != _internalState.value.proxyId) {
-            _internalState.update { it.copy(proxyId = newState.proxyId) }
-        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

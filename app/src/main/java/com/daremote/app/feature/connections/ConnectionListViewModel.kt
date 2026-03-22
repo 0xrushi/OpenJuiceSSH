@@ -45,7 +45,8 @@ data class ConnectionListState(
     val selectedGroupId: Long? = null,
     val serverStats: Map<Long, ServerCardStats> = emptyMap(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val snackbarMessage: String? = null
 )
 
 @HiltViewModel
@@ -57,6 +58,7 @@ class ConnectionListViewModel @Inject constructor(
 
     private val _selectedGroupId = MutableStateFlow<Long?>(null)
     private val _serverStats = MutableStateFlow<Map<Long, ServerCardStats>>(emptyMap())
+    private val _snackbarMessage = MutableStateFlow<String?>(null)
     private val monitoringJobs = mutableMapOf<Long, Job>()
     private val prevNetBytes = mutableMapOf<Long, Pair<Long, Long>>()
     private val prevNetTime = mutableMapOf<Long, Long>()
@@ -68,8 +70,8 @@ class ConnectionListViewModel @Inject constructor(
         serverRepository.getAllGroups(),
         _selectedGroupId,
         sshConnectionRepository.getConnectionStatuses(),
-        _serverStats
-    ) { servers, groups, selectedGroup, statuses, stats ->
+        combine(_serverStats, _snackbarMessage) { a, b -> a to b }
+    ) { servers, groups, selectedGroup, statuses, (stats, snackbar) ->
         val filteredServers = if (selectedGroup != null) {
             servers.filter { it.groupId == selectedGroup }
         } else servers
@@ -80,7 +82,8 @@ class ConnectionListViewModel @Inject constructor(
             connectionStatuses = statuses,
             selectedGroupId = selectedGroup,
             serverStats = stats,
-            isLoading = false
+            isLoading = false,
+            snackbarMessage = snackbar
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectionListState())
 
@@ -229,21 +232,37 @@ class ConnectionListViewModel @Inject constructor(
 
     fun connect(server: Server) {
         viewModelScope.launch {
-            sshConnectionRepository.connect(server)
-            serverRepository.updateLastConnected(server.id)
+            val result = sshConnectionRepository.connect(server)
+            result.onSuccess {
+                serverRepository.updateLastConnected(server.id)
+            }.onFailure { e ->
+                _snackbarMessage.value = "${server.name}: ${e.message}"
+            }
         }
     }
 
     fun disconnect(serverId: Long) {
         viewModelScope.launch {
-            sshConnectionRepository.disconnect(serverId)
+            try {
+                sshConnectionRepository.disconnect(serverId)
+            } catch (e: Exception) {
+                _snackbarMessage.value = "Failed to disconnect: ${e.message}"
+            }
         }
     }
 
     fun deleteServer(serverId: Long) {
         viewModelScope.launch {
-            sshConnectionRepository.disconnect(serverId)
-            serverRepository.deleteServer(serverId)
+            try {
+                sshConnectionRepository.disconnect(serverId)
+                serverRepository.deleteServer(serverId)
+            } catch (e: Exception) {
+                _snackbarMessage.value = "Failed to delete server: ${e.message}"
+            }
         }
+    }
+
+    fun snackbarShown() {
+        _snackbarMessage.value = null
     }
 }

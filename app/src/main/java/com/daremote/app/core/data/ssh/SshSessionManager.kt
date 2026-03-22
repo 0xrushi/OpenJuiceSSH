@@ -185,10 +185,20 @@ class SshSessionManager @Inject constructor(
             client
         } catch (e: Exception) {
             val errorMessage = when {
-                e.message?.contains("Auth fail", ignoreCase = true) == true -> 
+                e.message?.contains("Auth fail", ignoreCase = true) == true ->
                     "Authentication failed: Check if your public key is in ~/.ssh/authorized_keys and permissions are 600"
+                e.message?.contains("Exhausted available authentication methods", ignoreCase = true) == true ->
+                    "Authentication failed: Server rejected all authentication methods. Check your credentials."
                 e.message?.contains("Key exchange failed", ignoreCase = true) == true ->
                     "Key exchange failed: Server may not support the selected key algorithm"
+                e.message?.contains("Connection refused", ignoreCase = true) == true ->
+                    "Connection refused: Server may not be running or port is incorrect"
+                e.message?.contains("timed out", ignoreCase = true) == true ||
+                e.message?.contains("timeout", ignoreCase = true) == true ->
+                    "Connection timed out: Server may be unreachable"
+                e.message?.contains("UnknownHost", ignoreCase = true) == true ||
+                e.message?.contains("No address associated", ignoreCase = true) == true ->
+                    "Host not found: Check the hostname or IP address"
                 else -> e.message ?: "Unknown error"
             }
             Log.e("SshSessionManager", "Failed to connect to ${server.name}: $errorMessage", e)
