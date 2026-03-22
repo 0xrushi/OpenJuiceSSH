@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.daremote.app"
+    namespace = "com.openjuicessh.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.daremote.app"
+        applicationId = "com.openjuicessh.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

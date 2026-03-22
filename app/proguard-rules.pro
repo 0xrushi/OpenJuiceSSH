@@ -23,9 +23,9 @@
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class dagger.** { *; }
--keep class com.daremote.app.Hilt_DaRemoteApp { *; }
--keep class com.daremote.app.DaRemoteApp_GeneratedInjector { *; }
--keep class com.daremote.app.MainActivity_GeneratedInjector { *; }
+-keep class com.openjuicessh.app.Hilt_DaRemoteApp { *; }
+-keep class com.openjuicessh.app.DaRemoteApp_GeneratedInjector { *; }
+-keep class com.openjuicessh.app.MainActivity_GeneratedInjector { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 -keep class hilt_aggregated_deps.** { *; }
 -keep class * implements dagger.hilt.internal.GeneratedComponent { *; }
