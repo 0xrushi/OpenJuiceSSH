@@ -6,15 +6,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-tasks.register<Exec>("buildNativeLib") {
-    workingDir = rootProject.file("zig-src")
-    commandLine("zig", "build", "-Doptimize=ReleaseSmall", "jni")
-    isIgnoreExitValue = true
-}
-
-tasks.matching { it.name == "preBuild" }.configureEach {
-    dependsOn("buildNativeLib")
-}
+// Native build disabled - will be enabled when native library is available
+// tasks.register<Exec>("buildNativeLib") { ... }
 
 android {
     namespace = "com.openjuicessh.app"
@@ -26,12 +19,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        ndk {
-            abiFilters.add("arm64-v8a")
-        }
     }
-
-    ndkVersion = "27.2.12479018"
 
     signingConfigs {
         create("release") {
@@ -43,9 +31,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            isZipAlignEnabled = true
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isZipAlignEnabled = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -70,6 +62,21 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+        }
+        dex {
+            useLegacyPackaging = true
+        }
+    }
+
+    // Strip all native libraries to avoid extraction issues
+    packagingOptions {
+        exclude("lib/**/*.so")
+        exclude("lib-armeabi/**/*.so")
+    }
+
+    bundle {
+        language {
+            enableSplit = false
         }
     }
 }
