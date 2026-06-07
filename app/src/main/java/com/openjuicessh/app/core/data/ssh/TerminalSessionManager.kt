@@ -2,6 +2,7 @@ package com.openjuicessh.app.core.data.ssh
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.openjuicessh.app.core.service.SshConnectionService
 import com.openjuicessh.app.core.terminal.GhosttyBridge
@@ -53,6 +54,7 @@ class TerminalSessionManager @Inject constructor(
     fun removeListener(listener: TerminalSessionListener) = listeners.remove(listener)
 
     suspend fun openSession(serverId: Long): Int = withContext(Dispatchers.IO) {
+        Log.i("TerminalSession", "openSession: bridge status=${bridge.nativeStatus()}")
         val client = sessionManager.getSession(serverId) ?: throw Exception("SSH client not connected")
 
         val session = client.startSession()
@@ -63,8 +65,13 @@ class TerminalSessionManager @Inject constructor(
 
         val terminalSessionId = sessionCounter++
 
-        val ghosttyHandle = withContext(Dispatchers.Main) {
-            bridge.nativeCreate(cols = 80, rows = 24, maxScrollback = 1000)
+        val ghosttyHandle = if (bridge.isLoaded()) {
+            val h = bridge.nativeCreate(cols = 80, rows = 24, maxScrollback = 1000)
+            Log.i("TerminalSession", "nativeCreate returned handle=$h")
+            h
+        } else {
+            Log.w("TerminalSession", "bridge not loaded, skipping nativeCreate")
+            0L
         }
 
         val data = TerminalSessionData(
@@ -94,26 +101,34 @@ class TerminalSessionManager @Inject constructor(
                     val n = inputStream.read(buf)
                     if (n == -1) break
 
-                    bridge.nativeWriteRemote(data.ghosttyHandle, buf.sliceArray(0 until n))
+                    if (bridge.isLoaded() && data.ghosttyHandle != 0L) {
+                        Log.v("TerminalSession", "writing $n bytes to ghostty handle ${data.ghosttyHandle}")
+                        bridge.nativeWriteRemote(data.ghosttyHandle, buf.sliceArray(0 until n))
 
-                    val ptyData = bridge.nativeDrainPtyWrites(data.ghosttyHandle)
-                    if (ptyData.isNotEmpty()) {
-                        data.outputStream.write(ptyData)
-                        data.outputStream.flush()
-                    }
+                        val ptyData = bridge.nativeDrainPtyWrites(data.ghosttyHandle)
+                        if (ptyData.isNotEmpty()) {
+                            data.outputStream.write(ptyData)
+                            data.outputStream.flush()
+                        }
 
-                    val now = System.currentTimeMillis()
-                    if (now - lastSnapshotTime > 16) {
-                        val snapshotBuf = bridge.nativeSnapshot(data.ghosttyHandle)
-                        val imagesBuf = bridge.nativeSnapshotImages(data.ghosttyHandle)
-                        val images = TerminalSnapshot.parseImages(imagesBuf)
-                        val snapshot = TerminalSnapshot.fromByteBuffer(snapshotBuf, images)
+                        val now = System.currentTimeMillis()
+                        if (now - lastSnapshotTime > 16) {
+                            try {
+                                val snapshotBuf = bridge.nativeSnapshot(data.ghosttyHandle)
+                                val imagesBuf = bridge.nativeSnapshotImages(data.ghosttyHandle)
+                                val images = TerminalSnapshot.parseImages(imagesBuf)
+                                val snapshot = TerminalSnapshot.fromByteBuffer(snapshotBuf, images)
+                                Log.v("TerminalSession", "snapshot: ${snapshot.cols}x${snapshot.rows} cursor=(${snapshot.cursorX},${snapshot.cursorY})")
 
-                        data.snapshotFlow.emit(snapshot)
-                        lastSnapshotTime = now
+                                data.snapshotFlow.emit(snapshot)
+                                lastSnapshotTime = now
 
-                        withContext(Dispatchers.Main) {
-                            listeners.forEach { it.onSessionUpdated(data.serverId, data.sessionId) }
+                                withContext(Dispatchers.Main) {
+                                    listeners.forEach { it.onSessionUpdated(data.serverId, data.sessionId) }
+                                }
+                            } catch (e: Throwable) {
+                                Log.e("TerminalSession", "snapshot error: ${e.message}", e)
+                            }
                         }
                     }
                 }
@@ -130,7 +145,9 @@ class TerminalSessionManager @Inject constructor(
             val list = current[serverId] ?: emptyList()
             val sessionToClose = list.find { it.sessionId == sessionId }
             sessionToClose?.let {
-                try { bridge.nativeDestroy(it.ghosttyHandle) } catch (_: Exception) {}
+                if (bridge.isLoaded() && it.ghosttyHandle != 0L) {
+                    try { bridge.nativeDestroy(it.ghosttyHandle) } catch (_: Throwable) {}
+                }
                 try { it.shell.close() } catch (_: Exception) {}
             }
             val newList = list.filter { it.sessionId != sessionId }
@@ -140,7 +157,9 @@ class TerminalSessionManager @Inject constructor(
 
     fun closeAllSessions() {
         _sessions.value.values.flatten().forEach {
-            try { bridge.nativeDestroy(it.ghosttyHandle) } catch (_: Exception) {}
+            if (bridge.isLoaded() && it.ghosttyHandle != 0L) {
+                try { bridge.nativeDestroy(it.ghosttyHandle) } catch (_: Throwable) {}
+            }
             try { it.shell.close() } catch (_: Exception) {}
         }
         _sessions.update { emptyMap() }
@@ -157,7 +176,9 @@ class TerminalSessionManager @Inject constructor(
     fun resize(serverId: Long, sessionId: Int, cols: Int, rows: Int, cellW: Int, cellH: Int) {
         scope.launch(Dispatchers.IO) {
             val session = _sessions.value[serverId]?.find { it.sessionId == sessionId } ?: return@launch
-            bridge.nativeResize(session.ghosttyHandle, cols, rows, cellW, cellH)
+            if (bridge.isLoaded() && session.ghosttyHandle != 0L) {
+                try { bridge.nativeResize(session.ghosttyHandle, cols, rows, cellW, cellH) } catch (_: Throwable) {}
+            }
             try {
                 session.shell.changeWindowDimensions(cols, rows, 0, 0)
             } catch (_: Exception) {}
@@ -165,18 +186,38 @@ class TerminalSessionManager @Inject constructor(
     }
 
     fun encodeKey(serverId: Long, sessionId: Int, key: Int, cp: Int, mods: Int, action: Int): ByteArray? {
+        if (!bridge.isLoaded()) return null
         val session = _sessions.value[serverId]?.find { it.sessionId == sessionId } ?: return null
-        return bridge.nativeEncodeKey(session.ghosttyHandle, key, cp, mods, action, null)
+        if (session.ghosttyHandle == 0L) return null
+        return try { bridge.nativeEncodeKey(session.ghosttyHandle, key, cp, mods, action, null) } catch (_: Throwable) { null }
+    }
+
+    fun formatSelectionRange(serverId: Long, sessionId: Int, startCell: Int, endCell: Int): String? {
+        if (!bridge.isLoaded()) return null
+        val session = _sessions.value[serverId]?.find { it.sessionId == sessionId } ?: return null
+        if (session.ghosttyHandle == 0L) return null
+        return try { bridge.nativeFormatSelectionRange(session.ghosttyHandle, startCell, endCell) } catch (_: Throwable) { null }
+    }
+
+    fun selectAll(serverId: Long, sessionId: Int): String? {
+        if (!bridge.isLoaded()) return null
+        val session = _sessions.value[serverId]?.find { it.sessionId == sessionId } ?: return null
+        if (session.ghosttyHandle == 0L) return null
+        return try { bridge.nativeSelectAll(session.ghosttyHandle) } catch (_: Throwable) { null }
     }
 
     fun scroll(serverId: Long, sessionId: Int, delta: Int, x: Float, y: Float) {
+        if (!bridge.isLoaded()) return
         scope.launch(Dispatchers.IO) {
             val session = _sessions.value[serverId]?.find { it.sessionId == sessionId } ?: return@launch
-            bridge.nativeScroll(session.ghosttyHandle, delta, x, y)
-            val ptyData = bridge.nativeDrainPtyWrites(session.ghosttyHandle)
-            if (ptyData.isNotEmpty()) {
-                try { session.outputStream.write(ptyData); session.outputStream.flush() } catch (_: Exception) {}
-            }
+            if (session.ghosttyHandle == 0L) return@launch
+            try {
+                bridge.nativeScroll(session.ghosttyHandle, delta, x, y)
+                val ptyData = bridge.nativeDrainPtyWrites(session.ghosttyHandle)
+                if (ptyData.isNotEmpty()) {
+                    session.outputStream.write(ptyData); session.outputStream.flush()
+                }
+            } catch (_: Throwable) {}
         }
     }
 }

@@ -41,6 +41,11 @@ Thumbs.db
 *.pk8
 *.pem
 
+# Zig build artifacts
+zig-src/.zig-cache/
+zig-src/zig-out/
+zig-src/zig-pkg/
+
 # Log files
 *.log
 

@@ -157,7 +157,7 @@ class TerminalViewModel @Inject constructor(
                 if (terminalSessionManager.sessions.value[serverId].isNullOrEmpty()) {
                     openNewSession()
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 _state.update { it.copy(error = "Connection failed: ${e.message}") }
             }
         }
@@ -193,7 +193,7 @@ class TerminalViewModel @Inject constructor(
             try {
                 val sessionId = terminalSessionManager.openSession(serverId)
                 _state.update { it.copy(currentSessionId = sessionId) }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 _state.update { it.copy(error = "Failed to start shell: ${e.message}") }
             }
         }
@@ -541,6 +541,12 @@ class TerminalViewModel @Inject constructor(
     fun sendInput(sessionId: Int, data: ByteArray) {
         terminalSessionManager.sendInput(serverId, sessionId, data)
     }
+
+    fun selectAll(sessionId: Int): String? =
+        terminalSessionManager.selectAll(serverId, sessionId)
+
+    fun formatSelectionRange(sessionId: Int, startCell: Int, endCell: Int): String? =
+        terminalSessionManager.formatSelectionRange(serverId, sessionId, startCell, endCell)
 
     override fun onCleared() {
         terminalSessionManager.removeListener(this)

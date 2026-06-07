@@ -398,24 +398,24 @@ fn jniNewStringUTF(env: *c.JNIEnv, s: [*:0]const u8) c.jstring {
     return env.*.*.NewStringUTF.?(env, s);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeVersion(env: *c.JNIEnv, clazz: c.jclass) callconv(.c) c.jstring {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeVersion(env: *c.JNIEnv, clazz: c.jclass) callconv(.c) c.jstring {
     _ = clazz;
     return jniNewStringUTF(env, "1");
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeCreate(env: *c.JNIEnv, thiz: c.jobject, cols: c.jint, rows: c.jint, max_scrollback: c.jint) callconv(.c) c.jlong {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeCreate(env: *c.JNIEnv, thiz: c.jobject, cols: c.jint, rows: c.jint, max_scrollback: c.jint) callconv(.c) c.jlong {
     _ = env;
     _ = thiz;
     return chuchu_create_terminal(cols, rows, max_scrollback);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeDestroy(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeDestroy(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) void {
     _ = env;
     _ = thiz;
     chuchu_destroy_terminal(handle);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeWriteRemote(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, data: c.jbyteArray) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeWriteRemote(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, data: c.jbyteArray) callconv(.c) void {
     _ = thiz;
     if (data == null) return;
     const len = env.*.*.GetArrayLength.?(env, data);
@@ -427,25 +427,25 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeWriteRe
     env.*.*.ReleaseByteArrayElements.?(env, data, bytes, c.JNI_ABORT);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeResize(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, cols: c.jint, rows: c.jint, cell_width: c.jint, cell_height: c.jint) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeResize(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, cols: c.jint, rows: c.jint, cell_width: c.jint, cell_height: c.jint) callconv(.c) void {
     _ = env;
     _ = thiz;
     chuchu_resize(handle, cols, rows, cell_width, cell_height);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeScroll(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, delta: c.jint, x: c.jfloat, y: c.jfloat) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeScroll(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, delta: c.jint, x: c.jfloat, y: c.jfloat) callconv(.c) void {
     _ = env;
     _ = thiz;
     chuchu_scroll(handle, delta, x, y);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeScrollToActive(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeScrollToActive(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) void {
     _ = env;
     _ = thiz;
     chuchu_scroll_to_active(handle);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSnapshot(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jobject {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSnapshot(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jobject {
     _ = thiz;
     var size: usize = 0;
     const buffer = chuchu_build_text_snapshot(handle, &size);
@@ -453,7 +453,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSnapsho
     return jniNewDirectByteBuffer(env, @ptrCast(buffer), @intCast(size));
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSnapshotImages(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jobject {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSnapshotImages(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jobject {
     _ = thiz;
     var size: usize = 0;
     const buffer = chuchu_build_image_snapshot(handle, &size);
@@ -461,44 +461,44 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSnapsho
     return jniNewDirectByteBuffer(env, @ptrCast(buffer), @intCast(size));
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeIsImageLoading(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jboolean {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeIsImageLoading(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jboolean {
     _ = env;
     _ = thiz;
     const terminal = chuchuFromHandle(handle) orelse return c.JNI_FALSE;
     return if (terminal.terminal.screens.active.kitty_images.loading != null) c.JNI_TRUE else c.JNI_FALSE;
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativePollTitle(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jstring {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativePollTitle(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jstring {
     _ = thiz;
     const value = chuchu_poll_title_ptr(handle) orelse return null;
     return jniNewStringUTF(env, value);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativePollPwd(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jstring {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativePollPwd(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jstring {
     _ = thiz;
     const value = chuchu_poll_pwd_ptr(handle) orelse return null;
     return jniNewStringUTF(env, value);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeDrainBellCount(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jint {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeDrainBellCount(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jint {
     _ = env;
     _ = thiz;
     return chuchu_drain_bell_count(handle);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSetColorScheme(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, scheme: c.jint) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSetColorScheme(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, scheme: c.jint) callconv(.c) void {
     _ = env;
     _ = thiz;
     chuchu_set_color_scheme(handle, scheme);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSetMouseEncodingSize(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, screen_width: c.jint, screen_height: c.jint, cell_width: c.jint, cell_height: c.jint, padding_top: c.jint, padding_bottom: c.jint, padding_left: c.jint, padding_right: c.jint) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSetMouseEncodingSize(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, screen_width: c.jint, screen_height: c.jint, cell_width: c.jint, cell_height: c.jint, padding_top: c.jint, padding_bottom: c.jint, padding_left: c.jint, padding_right: c.jint) callconv(.c) void {
     _ = env;
     _ = thiz;
     chuchu_set_mouse_encoding_size(handle, screen_width, screen_height, cell_width, cell_height, padding_top, padding_bottom, padding_left, padding_right);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeEncodeKey(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, key: c.jint, codepoint: c.jint, mods: c.jint, action: c.jint, utf8_jstring: c.jstring) callconv(.c) c.jbyteArray {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeEncodeKey(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, key: c.jint, codepoint: c.jint, mods: c.jint, action: c.jint, utf8_jstring: c.jstring) callconv(.c) c.jbyteArray {
     _ = thiz;
     const terminal = chuchuFromHandle(handle) orelse return jniEmptyByteArray(env);
     const action_value: ghostty.input.KeyAction = std.meta.intToEnum(ghostty.input.KeyAction, action) catch return jniEmptyByteArray(env);
@@ -532,7 +532,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeEncodeK
     return jniByteArrayFromBytes(env, writer.buffered());
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeEncodeMouse(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, action: c.jint, button: c.jint, mods: c.jint, x: c.jfloat, y: c.jfloat, any_button_pressed: c.jboolean, track_last_cell: c.jboolean) callconv(.c) c.jbyteArray {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeEncodeMouse(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, action: c.jint, button: c.jint, mods: c.jint, x: c.jfloat, y: c.jfloat, any_button_pressed: c.jboolean, track_last_cell: c.jboolean) callconv(.c) c.jbyteArray {
     _ = thiz;
     const terminal = chuchuFromHandle(handle) orelse return jniEmptyByteArray(env);
     if (!terminal.mouse_size_set) return jniEmptyByteArray(env);
@@ -551,7 +551,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeEncodeM
     return jniByteArrayFromBytes(env, writer.buffered());
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeEncodeFocus(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, focused: c.jboolean) callconv(.c) c.jbyteArray {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeEncodeFocus(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, focused: c.jboolean) callconv(.c) c.jbyteArray {
     _ = thiz;
     const terminal = chuchuFromHandle(handle) orelse return jniEmptyByteArray(env);
     if (!terminal.terminal.modes.get(.focus_event)) return jniEmptyByteArray(env);
@@ -561,7 +561,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeEncodeF
     return jniByteArrayFromBytes(env, writer.buffered());
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeDrainPtyWrites(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jbyteArray {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeDrainPtyWrites(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong) callconv(.c) c.jbyteArray {
     _ = thiz;
     const terminal = chuchuFromHandle(handle) orelse return jniEmptyByteArray(env);
     if (terminal.pty_write_len == 0) return jniEmptyByteArray(env);
@@ -570,7 +570,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeDrainPt
     return out;
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSetDefaultColors(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, fg_rgb: c.jintArray, bg_rgb: c.jintArray, cursor_rgb: c.jintArray, palette_rgb: c.jbyteArray) callconv(.c) void {
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSetDefaultColors(env: *c.JNIEnv, thiz: c.jobject, handle: c.jlong, fg_rgb: c.jintArray, bg_rgb: c.jintArray, cursor_rgb: c.jintArray, palette_rgb: c.jbyteArray) callconv(.c) void {
     _ = thiz;
     var fg_vals: [3]u8 = .{ 0, 0, 0 };
     var bg_vals: [3]u8 = .{ 0, 0, 0 };
@@ -1333,7 +1333,7 @@ fn selectionTextFromPins(
     });
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeFormatSelectionRange(
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeFormatSelectionRange(
     env: *c.JNIEnv,
     thiz: c.jobject,
     handle: c.jlong,
@@ -1358,7 +1358,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeFormatS
     return jniNewStringUTF(env, text.ptr);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSelectWordAt(
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSelectWordAt(
     env: *c.JNIEnv,
     thiz: c.jobject,
     handle: c.jlong,
@@ -1381,7 +1381,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSelectW
     return jniNewStringUTF(env, text.ptr);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSelectLineAt(
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSelectLineAt(
     env: *c.JNIEnv,
     thiz: c.jobject,
     handle: c.jlong,
@@ -1407,7 +1407,7 @@ export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSelectL
     return jniNewStringUTF(env, text.ptr);
 }
 
-export fn Java_com_jossephus_chuchu_service_terminal_GhosttyBridge_nativeSelectAll(
+export fn Java_com_openjuicessh_app_core_terminal_GhosttyBridge_nativeSelectAll(
     env: *c.JNIEnv,
     thiz: c.jobject,
     handle: c.jlong,

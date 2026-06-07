@@ -1,21 +1,29 @@
 package com.openjuicessh.app.core.terminal
 
+import android.util.Log
 import java.nio.ByteBuffer
 
 class GhosttyBridge {
     companion object {
-        private val loadError: Throwable? = runCatching {
+        private const val TAG = "GhosttyBridge"
+        private val loadError: Throwable? = try {
+            Log.i(TAG, "Loading libchuchu_jni...")
             System.loadLibrary("chuchu_jni")
-        }.exceptionOrNull()
+            Log.i(TAG, "libchuchu_jni loaded OK")
+            null
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "UnsatisfiedLinkError loading libchuchu_jni: ${e.message}")
+            e
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception loading libchuchu_jni: ${e.message}")
+            e
+        }
     }
 
     fun nativeStatus(): String {
-        return if (loadError == null) {
-            "loaded"
-        } else {
-            val message = loadError.message?.takeIf { it.isNotBlank() } ?: "unknown"
-            "not loaded (${loadError::class.simpleName}: $message)"
-        }
+        val err = loadError ?: return "loaded"
+        val message = err.message?.takeIf { it.isNotBlank() } ?: "unknown"
+        return "not loaded (${err::class.simpleName}: $message)"
     }
 
     fun isLoaded(): Boolean = loadError == null

@@ -68,9 +68,8 @@ android {
         }
     }
 
-    // Strip all native libraries to avoid extraction issues
     packagingOptions {
-        exclude("lib/**/*.so")
+        // Only exclude the system-injected libs that cause extraction errors
         exclude("lib-armeabi/**/*.so")
     }
 
@@ -134,4 +133,10 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
+
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 }
