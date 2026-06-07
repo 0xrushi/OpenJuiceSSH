@@ -3,7 +3,6 @@ package com.openjuicessh.app.feature.terminal
 import android.content.Context
 import android.os.Environment
 import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -14,9 +13,9 @@ import com.openjuicessh.app.core.data.ssh.TerminalSessionManager
 import com.openjuicessh.app.core.domain.model.Snippet
 import com.openjuicessh.app.core.domain.repository.ServerRepository
 import com.openjuicessh.app.core.domain.repository.SnippetRepository
-import com.termux.terminal.TerminalSession
-import com.termux.view.TerminalView
-import com.termux.view.TerminalViewClient
+import com.openjuicessh.app.core.terminal.GhosttyKeyAction
+import com.openjuicessh.app.core.terminal.KeyMapper
+import com.openjuicessh.app.core.terminal.TerminalSnapshot
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +27,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.lang.ref.WeakReference
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.inject.Inject
@@ -70,7 +68,8 @@ data class TerminalSessionData(
     val id: Int,
     val name: String,
     val isConnected: Boolean = false,
-    val terminalSession: TerminalSession? = null
+    val ghosttyHandle: Long = 0L,
+    val snapshot: TerminalSnapshot? = null
 )
 
 data class TerminalState(
@@ -95,13 +94,11 @@ class TerminalViewModel @Inject constructor(
     private val sftpClient: SftpClient,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context
-) : ViewModel(), TerminalSessionManager.TerminalSessionListener, TerminalViewClient {
+) : ViewModel(), TerminalSessionManager.TerminalSessionListener {
 
     private val serverId: Long = savedStateHandle["serverId"] ?: 0L
     private val _state = MutableStateFlow(TerminalState())
     val state: StateFlow<TerminalState> = _state
-
-    private var terminalViewRef: WeakReference<TerminalView>? = null
 
     private val leftPathStack = mutableListOf<String>()
     private val rightPathStack = mutableListOf<String>()
@@ -114,16 +111,31 @@ class TerminalViewModel @Inject constructor(
     init {
         terminalSessionManager.addListener(this)
 
-        // Sync with TerminalSessionManager sessions
+        // Sync with TerminalSessionManager sessions and their snapshots
         viewModelScope.launch {
             terminalSessionManager.sessions.collectLatest { allSessions ->
                 val serverSessions = allSessions[serverId] ?: emptyList()
+                serverSessions.forEach { session ->
+                    launch {
+                        session.snapshotFlow.collectLatest { snapshot ->
+                            _state.update { s ->
+                                s.copy(
+                                    sessions = s.sessions.map {
+                                        if (it.id == session.sessionId)
+                                            it.copy(snapshot = snapshot)
+                                        else it
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
                 _state.update { s ->
                     s.copy(
-                        sessions = serverSessions.map { 
-                            TerminalSessionData(it.sessionId, it.name, true, it.terminalSession)
+                        sessions = serverSessions.map {
+                            TerminalSessionData(it.sessionId, it.name, true, it.ghosttyHandle, null)
                         },
-                        currentSessionId = if (s.currentSessionId == 0 && serverSessions.isNotEmpty()) 
+                        currentSessionId = if (s.currentSessionId == 0 && serverSessions.isNotEmpty())
                             serverSessions.first().sessionId else s.currentSessionId
                     )
                 }
@@ -181,8 +193,6 @@ class TerminalViewModel @Inject constructor(
     }
 
     // ── Terminal session management ───────────────────────────────────────────
-
-    fun setTerminalView(view: TerminalView) { terminalViewRef = WeakReference(view) }
 
     fun openNewSession() {
         viewModelScope.launch {
@@ -516,67 +526,22 @@ class TerminalViewModel @Inject constructor(
         if (isLeft) dp.copy(leftPane = f(dp.leftPane)) else dp.copy(rightPane = f(dp.rightPane))
     }
 
-    // ── TerminalViewClient ────────────────────────────────────────────────────
 
-    override fun onScale(scale: Float): Float = scale
+    // ── Ghostty key and scroll handling ────────────────────────────────────────
 
-    override fun onSingleTapUp(e: MotionEvent) {
-        terminalViewRef?.get()?.let { v ->
-            v.requestFocus()
-            (v.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
-                ?.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT)
+    fun sendKey(sessionId: Int, key: Int, cp: Int, mods: Int, action: Int) {
+        val bytes = terminalSessionManager.encodeKey(serverId, sessionId, key, cp, mods, action)
+        if (bytes != null && bytes.isNotEmpty()) {
+            sendInput(sessionId, bytes)
         }
     }
 
-    override fun shouldBackButtonBeMappedToEscape(): Boolean = false
-    override fun shouldEnforceCharBasedInput(): Boolean = false
-    override fun shouldUseCtrlSpaceWorkaround(): Boolean = false
-    override fun isTerminalViewSelected(): Boolean = true
-    override fun copyModeChanged(b: Boolean) {}
-    override fun onKeyUp(keyCode: Int, e: KeyEvent): Boolean = false
-    override fun onLongPress(event: MotionEvent): Boolean = false
-    override fun readControlKey(): Boolean = false
-    override fun readAltKey(): Boolean = false
-    override fun readShiftKey(): Boolean = false
-    override fun readFnKey(): Boolean = false
-    override fun onEmulatorSet() {}
-    override fun logError(tag: String, message: String) {}
-    override fun logWarn(tag: String, message: String) {}
-    override fun logInfo(tag: String, message: String) {}
-    override fun logDebug(tag: String, message: String) {}
-    override fun logVerbose(tag: String, message: String) {}
-    override fun logStackTraceWithMessage(tag: String, message: String, e: Exception) {}
-    override fun logStackTrace(tag: String, e: Exception) {}
-
-    override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean {
-        val bytes: ByteArray? = when (keyCode) {
-            KeyEvent.KEYCODE_ENTER -> "\r".toByteArray()
-            KeyEvent.KEYCODE_DEL -> byteArrayOf(0x7f)
-            KeyEvent.KEYCODE_FORWARD_DEL -> "\u001b[3~".toByteArray()
-            KeyEvent.KEYCODE_TAB -> "\t".toByteArray()
-            KeyEvent.KEYCODE_ESCAPE -> "\u001b".toByteArray()
-            KeyEvent.KEYCODE_DPAD_UP -> "\u001b[A".toByteArray()
-            KeyEvent.KEYCODE_DPAD_DOWN -> "\u001b[B".toByteArray()
-            KeyEvent.KEYCODE_DPAD_RIGHT -> "\u001b[C".toByteArray()
-            KeyEvent.KEYCODE_DPAD_LEFT -> "\u001b[D".toByteArray()
-            KeyEvent.KEYCODE_MOVE_HOME -> "\u001b[1~".toByteArray()
-            KeyEvent.KEYCODE_MOVE_END -> "\u001b[4~".toByteArray()
-            KeyEvent.KEYCODE_PAGE_UP -> "\u001b[5~".toByteArray()
-            KeyEvent.KEYCODE_PAGE_DOWN -> "\u001b[6~".toByteArray()
-            KeyEvent.KEYCODE_INSERT -> "\u001b[2~".toByteArray()
-            else -> null
-        }
-        if (bytes != null) { sendInput(_state.value.currentSessionId, bytes); return true }
-        return false
+    fun sendScroll(sessionId: Int, delta: Int, x: Float, y: Float) {
+        terminalSessionManager.scroll(serverId, sessionId, delta, x, y)
     }
 
-    override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession): Boolean {
-        if (ctrlDown && (codePoint in 'a'.code..'z'.code || codePoint in 'A'.code..'Z'.code)) {
-            sendInput(_state.value.currentSessionId, byteArrayOf((Character.toLowerCase(codePoint.toChar()) - 'a' + 1).toByte()))
-            return true
-        }
-        sendInput(_state.value.currentSessionId, StringBuilder().appendCodePoint(codePoint).toString().toByteArray())
-        return true
+    fun resize(sessionId: Int, cols: Int, rows: Int, cellW: Int, cellH: Int) {
+        terminalSessionManager.resize(serverId, sessionId, cols, rows, cellW, cellH)
     }
 
     fun sendInput(sessionId: Int, data: ByteArray) {

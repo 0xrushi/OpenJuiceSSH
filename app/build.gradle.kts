@@ -6,6 +6,15 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+tasks.register<Exec>("buildNativeLib") {
+    workingDir = rootProject.file("zig-src")
+    commandLine("zig", "build", "-Doptimize=ReleaseSmall", "jni")
+}
+
+tasks.matching { it.name.startsWith("compile") || it.name == "preBuild" }.configureEach {
+    dependsOn("buildNativeLib")
+}
+
 android {
     namespace = "com.openjuicessh.app"
     compileSdk = 35
@@ -16,7 +25,12 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
     }
+
+    ndkVersion = "27.2.12479018"
 
     signingConfigs {
         create("release") {
@@ -112,8 +126,4 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
-
-    // Terminal
-    implementation(libs.termux.view)
-    implementation(libs.termux.emulator)
 }

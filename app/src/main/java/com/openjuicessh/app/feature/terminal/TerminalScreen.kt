@@ -1,6 +1,7 @@
 package com.openjuicessh.app.feature.terminal
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,14 +21,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openjuicessh.app.core.domain.model.Snippet
+import com.openjuicessh.app.core.terminal.TerminalSnapshot
 import com.openjuicessh.app.core.ui.theme.*
 import com.openjuicessh.app.feature.settings.SettingsViewModel
-import com.termux.terminal.TextStyle as TermuxTextStyle
-import com.termux.view.TerminalView
+import android.graphics.Paint as AndroidPaint
 
 private val PanelIndicator = Color(0xFF26C6DA)
 
@@ -44,7 +46,7 @@ fun TerminalScreen(
     var showFnKeys by remember { mutableStateOf(false) }
 
     val currentSession = state.sessions.find { it.id == state.currentSessionId }
-    val terminalSession = currentSession?.terminalSession
+    val snapshot = currentSession?.snapshot
 
     Scaffold(
         topBar = {
@@ -88,7 +90,7 @@ fun TerminalScreen(
                 .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars))
         ) {
             when (state.activePanel) {
-                TerminalPanel.TERMINAL -> TerminalPanelContent(state, terminalSession, viewModel, settingsState.terminalFontSize, terminalTheme)
+                TerminalPanel.TERMINAL -> TerminalPanelContent(state, snapshot, viewModel, settingsState.terminalFontSize, terminalTheme)
                 TerminalPanel.SFTP -> DualPaneSftpScreen(state, viewModel)
                 TerminalPanel.SNIPPETS -> SnippetsPanel(state, viewModel)
             }
@@ -155,7 +157,7 @@ fun TerminalScreen(
 @Composable
 private fun ColumnScope.TerminalPanelContent(
     state: TerminalState,
-    terminalSession: com.termux.terminal.TerminalSession?,
+    snapshot: TerminalSnapshot?,
     viewModel: TerminalViewModel,
     fontSize: Int,
     theme: TerminalColorTheme
@@ -198,31 +200,10 @@ private fun ColumnScope.TerminalPanelContent(
             .weight(1f)
             .background(theme.background)
     ) {
-        if (terminalSession != null) {
-            AndroidView(
-                factory = { ctx ->
-                    TerminalView(ctx, null).apply {
-                        setTerminalViewClient(viewModel)
-                        setTextSize(fontSize)
-                        attachSession(terminalSession)
-                        viewModel.setTerminalView(this)
-                        isFocusable = true
-                        isFocusableInTouchMode = true
-                        requestFocus()
-                        applyTerminalTheme(this, theme)
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-                update = { view ->
-                    view.setTerminalViewClient(viewModel)
-                    view.setTextSize(fontSize)
-                    viewModel.setTerminalView(view)
-                    if (view.mTermSession != terminalSession) {
-                        view.attachSession(terminalSession)
-                    }
-                    applyTerminalTheme(view, theme)
-                }
-            )
+        if (snapshot != null) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawTerminal(snapshot, theme, fontSize)
+            }
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = TerminalGreen)
@@ -247,27 +228,12 @@ private fun ColumnScope.TerminalPanelContent(
     }
 }
 
-private fun applyTerminalTheme(view: TerminalView, theme: TerminalColorTheme) {
-    val emulator = view.mEmulator ?: return
-    emulator.mColors.mCurrentColors[TermuxTextStyle.COLOR_INDEX_BACKGROUND] = android.graphics.Color.argb(
-        255,
-        (theme.background.red * 255).toInt(),
-        (theme.background.green * 255).toInt(),
-        (theme.background.blue * 255).toInt()
-    )
-    emulator.mColors.mCurrentColors[TermuxTextStyle.COLOR_INDEX_FOREGROUND] = android.graphics.Color.argb(
-        255,
-        (theme.foreground.red * 255).toInt(),
-        (theme.foreground.green * 255).toInt(),
-        (theme.foreground.blue * 255).toInt()
-    )
-    emulator.mColors.mCurrentColors[TermuxTextStyle.COLOR_INDEX_CURSOR] = android.graphics.Color.argb(
-        255,
-        (theme.cursor.red * 255).toInt(),
-        (theme.cursor.green * 255).toInt(),
-        (theme.cursor.blue * 255).toInt()
-    )
-    view.invalidate()
+private fun DrawScope.drawTerminal(snapshot: TerminalSnapshot, theme: TerminalColorTheme, fontSize: Int) {
+    val cellWidth = size.width / (snapshot.cols.coerceAtLeast(1))
+    val cellHeight = size.height / (snapshot.rows.coerceAtLeast(1))
+
+    val bgColor = android.graphics.Color.argb(255, (theme.background.red * 255).toInt(), (theme.background.green * 255).toInt(), (theme.background.blue * 255).toInt())
+    drawRect(color = theme.background, size = size)
 }
 
 @Composable
