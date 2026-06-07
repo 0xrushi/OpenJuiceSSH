@@ -6,14 +6,15 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-tasks.register<Exec>("buildNativeLib") {
-    workingDir = rootProject.file("zig-src")
-    commandLine("zig", "build", "-Doptimize=ReleaseSmall", "jni")
-}
-
-tasks.matching { it.name.startsWith("compile") || it.name == "preBuild" }.configureEach {
-    dependsOn("buildNativeLib")
-}
+// Zig native build — disabled for now, will be enabled when Zig is available
+// tasks.register<Exec>("buildNativeLib") {
+//     workingDir = rootProject.file("zig-src")
+//     commandLine("zig", "build", "-Doptimize=ReleaseSmall", "jni")
+// }
+//
+// tasks.matching { it.name.startsWith("compile") || it.name == "preBuild" }.configureEach {
+//     dependsOn("buildNativeLib")
+// }
 
 android {
     namespace = "com.openjuicessh.app"

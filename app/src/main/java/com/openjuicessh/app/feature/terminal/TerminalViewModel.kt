@@ -183,13 +183,7 @@ class TerminalViewModel @Inject constructor(
     }
 
     override fun onSessionUpdated(serverId: Long, sessionId: Int) {
-        if (serverId == this.serverId) {
-            terminalViewRef?.get()?.let { v -> 
-                if (_state.value.currentSessionId == sessionId) {
-                    v.post { v.onScreenUpdated() } 
-                }
-            }
-        }
+        // Snapshot updates trigger state changes automatically via snapshot flows
     }
 
     // ── Terminal session management ───────────────────────────────────────────
