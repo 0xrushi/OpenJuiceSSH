@@ -383,19 +383,18 @@ private fun ColumnScope.TerminalPanelContent(
                         imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_NONE
                         // Fallback: some keyboards fire editor action for Enter instead of inserting \n
                         setOnEditorActionListener { _, _, _ ->
-                            viewModel.sendInput(state.currentSessionId, byteArrayOf(0x0D))
+                            viewModel.sendInput(tag as? Int ?: 0, byteArrayOf(0x0D))
                             true
                         }
                         var sentLength = 0
+                        // tag holds the current session ID, refreshed by the update block below
+                        tag = state.currentSessionId
                         addTextChangedListener(object : android.text.TextWatcher {
                             override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
                             override fun onTextChanged(s: CharSequence?, st: Int, before: Int, count: Int) {
-                                val (bytes, newLen) = TerminalInputEncoder.encode(
-                                    s?.toString() ?: "", sentLength
-                                )
-                                if (bytes.isNotEmpty()) {
-                                    viewModel.sendInput(state.currentSessionId, bytes)
-                                }
+                                val sessionId = tag as? Int ?: 0
+                                val (bytes, newLen) = TerminalInputEncoder.encode(s?.toString() ?: "", sentLength)
+                                if (bytes.isNotEmpty()) viewModel.sendInput(sessionId, bytes)
                                 sentLength = newLen
                             }
                             override fun afterTextChanged(s: android.text.Editable?) {}
@@ -407,6 +406,7 @@ private fun ColumnScope.TerminalPanelContent(
                         }
                     }
                 },
+                update = { view -> view.tag = state.currentSessionId },
                 modifier = Modifier.size(1.dp, 1.dp)
             )
         } else if (state.sessions.isNotEmpty() && state.error == null) {

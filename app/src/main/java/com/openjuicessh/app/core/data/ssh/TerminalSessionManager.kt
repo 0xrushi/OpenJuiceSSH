@@ -96,13 +96,31 @@ class TerminalSessionManager @Inject constructor(
         scope.launch(Dispatchers.IO) {
             try {
                 val buf = ByteArray(16384)
-                var lastSnapshotTime = 0L
+
+                suspend fun emitSnapshot() {
+                    try {
+                        val snapshotBuf = bridge.nativeSnapshot(data.ghosttyHandle)
+                        val imagesBuf = bridge.nativeSnapshotImages(data.ghosttyHandle)
+                        val images = TerminalSnapshot.parseImages(imagesBuf)
+                        val snapshot = TerminalSnapshot.fromByteBuffer(snapshotBuf, images)
+                        data.snapshotFlow.emit(snapshot)
+                        withContext(Dispatchers.Main) {
+                            listeners.forEach { it.onSessionUpdated(data.serverId, data.sessionId) }
+                        }
+                    } catch (e: Throwable) {
+                        Log.e("TerminalSession", "snapshot error: ${e.message}", e)
+                    }
+                }
+
+                val scheduler = BurstSnapshotScheduler(scope = this) {
+                    if (bridge.isLoaded() && data.ghosttyHandle != 0L) emitSnapshot()
+                }
+
                 while (true) {
                     val n = inputStream.read(buf)
                     if (n == -1) break
 
                     if (bridge.isLoaded() && data.ghosttyHandle != 0L) {
-                        Log.v("TerminalSession", "writing $n bytes to ghostty handle ${data.ghosttyHandle}")
                         bridge.nativeWriteRemote(data.ghosttyHandle, buf.sliceArray(0 until n))
 
                         val ptyData = bridge.nativeDrainPtyWrites(data.ghosttyHandle)
@@ -111,25 +129,7 @@ class TerminalSessionManager @Inject constructor(
                             data.outputStream.flush()
                         }
 
-                        val now = System.currentTimeMillis()
-                        if (now - lastSnapshotTime > 16) {
-                            try {
-                                val snapshotBuf = bridge.nativeSnapshot(data.ghosttyHandle)
-                                val imagesBuf = bridge.nativeSnapshotImages(data.ghosttyHandle)
-                                val images = TerminalSnapshot.parseImages(imagesBuf)
-                                val snapshot = TerminalSnapshot.fromByteBuffer(snapshotBuf, images)
-                                Log.v("TerminalSession", "snapshot: ${snapshot.cols}x${snapshot.rows} cursor=(${snapshot.cursorX},${snapshot.cursorY})")
-
-                                data.snapshotFlow.emit(snapshot)
-                                lastSnapshotTime = now
-
-                                withContext(Dispatchers.Main) {
-                                    listeners.forEach { it.onSessionUpdated(data.serverId, data.sessionId) }
-                                }
-                            } catch (e: Throwable) {
-                                Log.e("TerminalSession", "snapshot error: ${e.message}", e)
-                            }
-                        }
+                        scheduler.onDataChunkReceived()
                     }
                 }
             } catch (_: Exception) {
@@ -167,8 +167,13 @@ class TerminalSessionManager @Inject constructor(
 
     fun sendInput(serverId: Long, sessionId: Int, data: ByteArray) {
         scope.launch(Dispatchers.IO) {
-            _sessions.value[serverId]?.find { it.sessionId == sessionId }?.outputStream?.let {
-                try { it.write(data); it.flush() } catch (_: Exception) {}
+            val session = _sessions.value[serverId]?.find { it.sessionId == sessionId }
+            if (session == null) {
+                Log.w("TerminalSession", "sendInput: no session for serverId=$serverId sessionId=$sessionId")
+                return@launch
+            }
+            try { session.outputStream.write(data); session.outputStream.flush() } catch (e: Exception) {
+                Log.e("TerminalSession", "sendInput write failed: ${e.message}", e)
             }
         }
     }
